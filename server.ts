@@ -72,24 +72,24 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  const allowedOrigins = process.env.NODE_ENV === "production"
-    ? (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean)
-    : ["http://localhost:3000", "http://localhost:5173"];
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(o => o.trim())
+    .filter(Boolean);
+  
+  // Add classic dev origins if not explicitly set in production context
+  const devOrigins = ["http://localhost:3000", "http://localhost:5173"];
+  if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.push(...devOrigins);
+  }
 
   app.use(cors({
     origin: (origin, callback) => {
-      // In development or if ALLOWED_ORIGINS is not set, allow all
-      if (process.env.NODE_ENV !== "production" || !process.env.ALLOWED_ORIGINS) {
+      if (!origin) {
         return callback(null, true);
       }
-      
-      const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean);
-      if (!origin || allowed.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // Fallback for AI Studio preview URLs
-      if (origin.includes("run.app") || origin.includes("google_aistudio")) {
+
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
@@ -156,7 +156,7 @@ async function startServer() {
     if (!token) {
       throw new Error("SUPABASE_ANON_KEY environment variable is not set on the server.");
     }
-    
+
     console.log(`Calling Supabase service: ${url}`);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout
@@ -196,7 +196,7 @@ async function startServer() {
   };
 
   // ================= ROUTES =================
-  
+
   app.post("/api/resume-tools", requireAuth, mediumLimiter, async (req, res) => {
     req.socket.setTimeout(300000);
     res.setTimeout(300000);
@@ -227,7 +227,7 @@ async function startServer() {
       res.json(data);
     } catch (error: any) {
       console.error("Trending skills route error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch market data",
         message: error.message || "Unknown error"
       });
@@ -238,13 +238,13 @@ async function startServer() {
     try {
       const { resumeText } = req.body;
       if (!resumeText) throw new Error("resumeText is required");
-      
+
       console.log(`[ResumeExtractor] Extracting details (text length: ${resumeText.length})`);
       const details = await extractResumeDetails(resumeText);
       res.json(details);
     } catch (error: any) {
       console.error("Extract resume details error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to extract resume details",
         message: error.message || "Unknown error"
       });
@@ -274,7 +274,7 @@ async function startServer() {
       res.json(data);
     } catch (error: any) {
       console.error("Parse resume route error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to parse resume",
         message: error.message || "Unknown error"
       });
@@ -831,7 +831,7 @@ Rules:
       res.json(data);
     } catch (error: any) {
       console.error("Error fetching career mentor report:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to get career mentor report",
         message: error.message || "Unknown error"
       });
@@ -937,7 +937,7 @@ Rules:
 
     try {
       const allowedUpdates: Record<string, any> = {};
-      
+
       if (typeof updates.tier === "string" && ["Free", "Pro"].includes(updates.tier)) {
         allowedUpdates.tier = updates.tier;
       }
