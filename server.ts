@@ -869,7 +869,7 @@ Rules:
 
       const docSnap = await adminDb.collection("users").doc(uid).get();
       const docData = docSnap.exists ? docSnap.data() : null;
-      const isAdminUser = docData?.isAdmin === true || docData?.role === "admin" || decoded.email === 'projectsa241@gmail.com';
+      const isAdminUser = docData?.isAdmin === true || docData?.role === "admin";
 
       if (!isAdminUser) {
         return res.status(403).json({ error: "Forbidden: Admin access required" });

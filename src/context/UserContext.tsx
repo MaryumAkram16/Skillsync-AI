@@ -83,7 +83,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           ? user.firstName.slice(0, 2).toUpperCase()
           : (user.email ? user.email.slice(0, 2).toUpperCase() : 'US'))
   ) : 'US';
-  const isAdmin = !!(user?.isAdmin) || user?.email === 'projectsa241@gmail.com';
+  const isAdmin = !!(user?.isAdmin);
 
   useEffect(() => {
     if (user) {
