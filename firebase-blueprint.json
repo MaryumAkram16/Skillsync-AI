@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Stores user profile information and settings.",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string", "description": "User's first name" },
+        "lastName": { "type": "string", "description": "User's last name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "role": { "type": "string", "description": "User's current professional role" },
+        "location": { "type": "string", "description": "User's location" },
+        "experience": { "type": "string", "description": "User's experience level" },
+        "tier": { "type": "string", "enum": ["Free", "Pro"], "description": "Subscription tier" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "savedAssessments": { "type": "array", "description": "List of saved skill assessments" },
+        "savedCareerReports": { "type": "array", "description": "List of saved career mentor reports" },
+        "savedRoadmaps": { "type": "array", "description": "List of saved career roadmaps" },
+        "savedRadarAnalyses": { "type": "array", "description": "List of saved radar analyses" },
+        "savedResumeItems": { "type": "array", "description": "List of saved resume tool results" },
+        "savedGapAnalyses": { "type": "array", "description": "List of saved gap analyses" },
+        "savedInterviewSessions": { "type": "array", "description": "List of saved interview training sessions" },
+        "skillSyncScore": { "type": "object", "description": "SkillSync score breakdown" },
+        "scoreHistory": { "type": "array", "description": "History of score changes" },
+        "metadata": { "type": "object", "description": "System metadata like assessment counters or operational flags" }
+      },
+      "required": ["firstName", "lastName", "email", "tier"]
+    },
+    "SavedItem": {
+      "title": "SavedItem",
+      "description": "Represents a saved resume rewrite or cover letter.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["resume", "cover_letter"], "description": "The type of saved item" },
+        "data": { "type": "object", "description": "The generated content (JSON object)" },
+        "jobTitle": { "type": "string", "description": "Target job title" },
+        "company": { "type": "string", "description": "Target company" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the item was saved" },
+        "userId": { "type": "string", "description": "UID of the owner" }
+      },
+      "required": ["type", "data", "jobTitle", "company", "timestamp", "userId"]
+    },
+    "GapData": {
+      "title": "GapData",
+      "description": "Stores user-specific skill gap analysis data.",
+      "type": "object",
+      "properties": {
+        "data": { "type": "object", "description": "The parsed GAP analysis results" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["data", "updatedAt"]
+    },
+    "CareerMentorCache": {
+      "title": "CareerMentorCache",
+      "description": "Caches career mentor recommendations to save API credits.",
+      "type": "object",
+      "properties": {
+        "result": { "type": "object", "description": "The full CareerMentorResult object" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "When the cache entry expires" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the cache entry was created" }
+      },
+      "required": ["result", "expiresAt"]
+    },
+    "UserFeedback": {
+      "title": "UserFeedback",
+      "description": "Stores user feedback for specific features.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase UID of the user" },
+        "feature": { "type": "string", "enum": ["skill-assessment", "career-mentor", "radar", "parser", "resume-tools", "gapmap", "roadmap", "interview-prep"], "description": "ID of the feature" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5, "description": "1-5 star rating" },
+        "comment": { "type": "string", "description": "Optional user feedback" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp of submission" }
+      },
+      "required": ["userId", "feature", "rating", "timestamp"]
+    },
+    "FeatureUsage": {
+      "title": "FeatureUsage",
+      "description": "Tracks user engagement with specific features.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase UID of the user" },
+        "feature": { "type": "string", "enum": ["skill-assessment", "career-mentor", "radar", "parser", "resume-tools", "gapmap", "roadmap", "interview-prep"], "description": "ID of the feature" },
+        "action": { "type": "string", "enum": ["started", "completed"], "description": "Action performed" },
+        "timeSpent": { "type": "number", "minimum": 0, "description": "Time spent in seconds" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the action occurred" }
+      },
+      "required": ["userId", "feature", "action", "timeSpent", "timestamp"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Logs user activity for auditing and tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase UID of the user" },
+        "type": { "type": "string", "enum": ["login", "logout", "resume-generated", "pathway-started"], "description": "Type of activity" },
+        "details": { "type": "string", "description": "Additional details about the activity" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the activity occurred" }
+      },
+      "required": ["userId", "type", "details", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Individual user profile document."
+    },
+    "/users/{userId}/savedItems/{itemId}": {
+      "schema": "SavedItem",
+      "description": "Collection of saved resume tools results for a specific user."
+    },
+    "/gapData/{userId}": {
+      "schema": "GapData",
+      "description": "User-specific skill gap analysis data."
+    },
+    "/career_mentor_cache/{cacheKey}": {
+      "schema": "CareerMentorCache",
+      "description": "Cache for career mentor recommendations."
+    },
+    "/userFeedback/{feedbackId}": {
+      "schema": "UserFeedback",
+      "description": "Collection of user feedback.",
+      "indexes": [
+        { "feature": "ASC", "timestamp": "DESC" },
+        { "userId": "ASC", "timestamp": "DESC" }
+      ]
+    },
+    "/featureUsage/{usageId}": {
+      "schema": "FeatureUsage",
+      "description": "Collection of feature usage tracking data.",
+      "indexes": [
+        { "userId": "ASC", "feature": "ASC" },
+        { "userId": "ASC", "action": "ASC", "timestamp": "ASC" }
+      ]
+    },
+    "/activityLog/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Collection of user activity logs.",
+      "indexes": [
+        { "userId": "ASC", "timestamp": "DESC" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions (The Pillars)
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    function hasRequiredFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+
+    function isServerTimestamp(field) {
+      return request.resource.data[field] == request.time;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserProfile(data) {
+      return hasRequiredFields(['uid', 'firstName', 'lastName', 'email', 'tier']) &&
+             hasOnlyAllowedFields([
+               'uid', 'firstName', 'lastName', 'email', 'role', 'location', 
+               'experience', 'score', 'tier', 'createdAt', 'skills', 
+               'learningPath', 'completedResources', 'actionItems',
+               'savedAssessments', 'savedCareerReports', 'savedRoadmaps', 
+               'savedRadarAnalyses', 'savedResumeItems', 'savedGapAnalyses', 
+               'savedInterviewSessions', 'skillSyncScore', 'scoreHistory'
+             ]) &&
+             data.uid == request.auth.uid &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() <= 50 &&
+             isValidEmail(data.email) &&
+             data.tier in ['Free', 'Pro'] &&
+             (!('score' in data) || data.score is number) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('skills' in data) || data.skills is list) &&
+             (!('learningPath' in data) || data.learningPath is list) &&
+             (!('completedResources' in data) || data.completedResources is list);
+    }
+
+    function isValidSavedItem(data) {
+      return hasRequiredFields(['type', 'data', 'jobTitle', 'company', 'timestamp', 'userId']) &&
+             hasOnlyAllowedFields(['type', 'data', 'resumeTitle', 'jobTitle', 'company', 'timestamp', 'userId']) &&
+             data.type in ['resume', 'cover_letter', 'bullet'] &&
+             data.data is map &&
+             (!('resumeTitle' in data) || data.resumeTitle is string) &&
+             data.jobTitle is string && data.jobTitle.size() > 0 && data.jobTitle.size() <= 100 &&
+             data.company is string && data.company.size() > 0 && data.company.size() <= 100 &&
+             data.userId == request.auth.uid &&
+             isServerTimestamp('timestamp');
+    }
+
+    function isValidGapData(data) {
+      return hasRequiredFields(['data', 'updatedAt']) &&
+             hasOnlyAllowedFields(['data', 'updatedAt']) &&
+             data.data is map &&
+             data.updatedAt is string;
+    }
+
+    function isValidAssessmentSession(data) {
+      return hasRequiredFields(['value', 'expiresAt', 'cachedAt']) &&
+             hasOnlyAllowedFields(['value', 'expiresAt', 'cachedAt']) &&
+             data.expiresAt is number &&
+             data.cachedAt is number &&
+             (data.value == null || (
+               data.value is map &&
+               (request.method != 'create' || (
+                 'userId' in data.value &&
+                 data.value.userId == request.auth.uid
+               ))
+             )) &&
+             (request.method != 'create' || (
+               !('userId' in data) || data.userId == request.auth.uid
+             ));
+    }
+
+    function isValidFeedback(data) {
+      let features = ["skill-assessment", "career-mentor", "radar", "parser", "resume-tools", "gapmap", "roadmap", "interview-prep"];
+      return hasRequiredFields(['userId', 'feature', 'rating', 'timestamp']) &&
+             hasOnlyAllowedFields(['userId', 'feature', 'rating', 'comment', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.feature in features &&
+             data.rating >= 1 && data.rating <= 5 && data.rating is int &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() <= 1000)) &&
+             isServerTimestamp('timestamp');
+    }
+
+    function isValidUsage(data) {
+      let features = ["skill-assessment", "career-mentor", "radar", "parser", "resume-tools", "gapmap", "roadmap", "interview-prep"];
+      return hasRequiredFields(['userId', 'feature', 'action', 'timeSpent', 'timestamp']) &&
+             hasOnlyAllowedFields(['userId', 'feature', 'action', 'timeSpent', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.feature in features &&
+             data.action in ["started", "completed"] &&
+             data.timeSpent is number && data.timeSpent >= 0 &&
+             isServerTimestamp('timestamp');
+    }
+
+    function isValidActivity(data) {
+      let types = ["login", "logout", "resume-generated", "pathway-started"];
+      return hasRequiredFields(['userId', 'type', 'details', 'timestamp']) &&
+             hasOnlyAllowedFields(['userId', 'type', 'details', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.type in types &&
+             data.details is string && data.details.size() <= 2000 &&
+             isServerTimestamp('timestamp');
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      
+      match /savedItems/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSavedItem(request.resource.data);
+        allow update: if isOwner(userId) && isValidSavedItem(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /gapData/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidGapData(request.resource.data);
+      allow update: if isOwner(userId) && isValidGapData(request.resource.data);
+    }
+
+    match /career_mentor_cache/{cacheKey} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Admin only via service account
+    }
+
+    match /ai_cache_radar/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_mentor/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_usecases/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_phase_explain/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_skill_gap_explain/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_trend_explain/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ai_cache_assessment_session/{sessionId} {
+      allow read: if isOwner(sessionId);
+      allow create, update: if isOwner(sessionId) && isValidAssessmentSession(request.resource.data);
+      allow delete: if isOwner(sessionId);
+    }
+
+    match /userFeedback/{feedbackId} {
+      // Rule 1: No blanket reads. Query must filter by userId.
+      allow read: if isAuthenticated() && 
+                    (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidFeedback(request.resource.data);
+      allow update, delete: if false; // Feedback is immutable for users
+    }
+
+    match /featureUsage/{usageId} {
+      allow read: if isAuthenticated() && 
+                    (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidUsage(request.resource.data);
+      allow update, delete: if false; // Usage logs are immutable
+    }
+
+    match /activityLog/{logId} {
+      allow read: if isAuthenticated() && 
+                    (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidActivity(request.resource.data);
+      allow update, delete: if false; // Audit logs are immutable
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

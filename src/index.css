@@ -1,0 +1,350 @@
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--bg);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary-blue: var(--primary-violet);
+  --color-primary-purple: var(--primary-cyan);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-heading: var(--text-primary);
+  --color-text-body: var(--text-secondary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-tag-bg: var(--tag-bg);
+  --color-tag-text: var(--tag-text);
+  --color-accent: var(--primary-cyan);
+  --color-accent-hover: var(--primary-cyan-light);
+  --color-near-black: #1A1D22;
+  --color-off-white: #F8F9FA;
+  --font-display: "Space Grotesk", "Inter", -apple-system, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ─── Violet + Cyan Palette ──────────────────────────────────────────────────
+   Primary: Violet (#7C3AED) - AI, Intelligence, Confidence
+   Accent:  Cyan  (#06B6D4) - Highlights, Tags, Data Points
+   Background: Near-Black (#0F0F1A) - Deep, immersive, modern
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Core Background & Card Colors */
+  --bg: #0B0B14;                    /* Slightly deeper than previous */
+  --card: #15152B;                  /* Refined card background */
+  --card-hover: #1D1D3D;
+  --border: #232344;
+
+  /* Primary Colors - Violet & Cyan */
+  --primary-violet: #7C3AED;        /* Vibrant Violet - Main accent */
+  --primary-violet-light: #A855F7;  /* Lighter violet - hover states */
+  --primary-violet-dim: #4C1D95;    /* Dark violet - pressed/active */
+  --primary-cyan: #06B6D4;          /* Vibrant Cyan - Secondary accent */
+  --primary-cyan-light: #67E8F9;    /* Light cyan - highlights */
+  --primary-cyan-dim: #0E7490;      /* Dark cyan - depth */
+
+  /* Text Colors */
+  --text-primary: #F1F5F9;          /* Near-white - high contrast */
+  --text-secondary: #94A3B8;        /* Slate gray - secondary text */
+  --text-tertiary: #64748B;         /* Muted - placeholder, hints */
+
+  /* Status Colors */
+  --success: #10B981;               /* Emerald - success states */
+  --warning: #F59E0B;               /* Amber - warnings */
+  --danger: #EF4444;                /* Red - errors */
+
+  /* Tags & Special Elements */
+  --tag-bg: #1E1040;                /* Deep violet tag background */
+  --tag-text: #C4B5FD;              /* Soft violet tag text */
+
+  /* Extended Palette */
+  --violet-subtle: rgba(124, 58, 237, 0.12);   /* Subtle violet fill */
+  --cyan-subtle: rgba(6, 182, 212, 0.12);       /* Subtle cyan fill */
+  --violet-glow: rgba(124, 58, 237, 0.25);      /* Violet glow */
+  --cyan-glow: rgba(6, 182, 212, 0.25);         /* Cyan glow */
+  --surface-1: #161628;             /* Slightly lighter than bg */
+  --surface-2: #1E1E3A;             /* Card level */
+  --surface-3: #252545;             /* Elevated card */
+}
+
+.dark {
+  --bg: #0F0F1A;
+  --card: #1E1E3A;
+  --card-hover: #252545;
+  --border: #2D2D52;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+}
+
+.light {
+  --bg: #F8F7FF;
+  --card: #FFFFFF;
+  --card-hover: #F3F0FF;
+  --border: #DDD6FE;
+  --primary-violet: #6D28D9;
+  --primary-violet-light: #7C3AED;
+  --primary-violet-dim: #4C1D95;
+  --primary-cyan: #0891B2;
+  --primary-cyan-light: #06B6D4;
+  --primary-cyan-dim: #0E7490;
+  --text-primary: #1E1B4B;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --success: #059669;
+  --warning: #D97706;
+  --danger: #DC2626;
+  --tag-bg: #EDE9FE;
+  --tag-text: #5B21B6;
+  --violet-subtle: rgba(109, 40, 217, 0.08);
+  --cyan-subtle: rgba(8, 145, 178, 0.08);
+  --violet-glow: rgba(109, 40, 217, 0.15);
+  --cyan-glow: rgba(8, 145, 178, 0.15);
+  --surface-1: #F3F0FF;
+  --surface-2: #FFFFFF;
+  --surface-3: #F8F7FF;
+}
+
+/* ─── Global Styles ─────────────────────────────────────────────────────── */
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ─── Solid Color Utilities ─────────────────────────────────────────────── */
+
+.bg-violet-solid {
+  background-color: var(--primary-violet);
+}
+
+.bg-cyan-solid {
+  background-color: var(--primary-cyan);
+}
+
+.bg-violet-subtle {
+  background-color: var(--violet-subtle);
+}
+
+.bg-cyan-subtle {
+  background-color: var(--cyan-subtle);
+}
+
+.bg-charcoal-subtle {
+  background-color: rgba(30, 30, 58, 0.5);
+}
+
+/* ─── Button Hover Effects ──────────────────────────────────────────────── */
+
+button, a[role="button"] {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--violet-glow);
+}
+
+/* ─── Focus States ──────────────────────────────────────────────────────── */
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary-violet);
+  box-shadow: 0 0 0 3px var(--violet-subtle);
+}
+
+/* ─── Select & Dropdown Visibility Fix ──────────────────────────────────── */
+
+select {
+  background-color: var(--bg);
+  color: var(--text-primary);
+}
+
+select option {
+  background-color: var(--card); /* Dark background for options */
+  color: var(--text-primary);     /* Light text for options */
+}
+
+/* Ensure placeholder-like first options are visible but distinct */
+select option:first-child {
+  color: var(--text-secondary);
+}
+
+/* ─── Scrollbar Styling ─────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-violet);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-violet-light);
+}
+
+/* ─── Selection Color ───────────────────────────────────────────────────── */
+
+::selection {
+  background-color: var(--primary-violet);
+  color: #ffffff;
+}
+
+/* ─── Animation Utilities ───────────────────────────────────────────────── */
+
+@keyframes pulse-violet {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+.animate-pulse-violet {
+  animation: pulse-violet 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes glow-violet {
+  0%, 100% { box-shadow: 0 0 6px var(--violet-glow); }
+  50%       { box-shadow: 0 0 22px rgba(124, 58, 237, 0.5); }
+}
+
+.animate-glow-violet {
+  animation: glow-violet 2s ease-in-out infinite;
+}
+
+@keyframes glow-cyan {
+  0%, 100% { box-shadow: 0 0 6px var(--cyan-glow); }
+  50%       { box-shadow: 0 0 22px rgba(6, 182, 212, 0.5); }
+}
+
+.animate-glow-cyan {
+  animation: glow-cyan 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ─── Radar Signature (Landing Hero) ────────────────────────────────────── */
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-radar-sweep {
+  animation: radar-sweep 6s linear infinite;
+}
+
+@keyframes radar-blip {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%       { opacity: 1; transform: scale(1.15); }
+}
+
+.animate-radar-blip {
+  animation: radar-blip 2.4s ease-in-out infinite;
+}
+
+.bg-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(6, 182, 212, 0.05) 0px,
+    rgba(6, 182, 212, 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-radar-sweep,
+  .animate-radar-blip,
+  .animate-pulse-violet,
+  .animate-glow-violet,
+  .animate-glow-cyan {
+    animation: none !important;
+  }
+}
+
+/* ─── Card Enhancements ─────────────────────────────────────────────────── */
+
+.card-violet-accent {
+  border-left: 4px solid var(--primary-violet);
+}
+
+.card-cyan-accent {
+  border-left: 4px solid var(--primary-cyan);
+}
+
+/* ─── Badge Styles ──────────────────────────────────────────────────────── */
+
+.badge-violet {
+  background-color: var(--violet-subtle);
+  color: #C4B5FD;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+.badge-cyan {
+  background-color: var(--cyan-subtle);
+  color: var(--primary-cyan-light);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* kept for any legacy references in the codebase */
+.badge-emerald { background-color: var(--violet-subtle); color: #C4B5FD; border: 1px solid rgba(124,58,237,0.3); }
+.badge-gold    { background-color: var(--cyan-subtle);   color: var(--primary-cyan-light); border: 1px solid rgba(6,182,212,0.3); }
+
+/* ─── Progress Bar Colors ───────────────────────────────────────────────── */
+
+.progress-violet {
+  background-color: var(--primary-violet);
+}
+
+.progress-cyan {
+  background-color: var(--primary-cyan);
+}
+
+/* kept for legacy references */
+.progress-emerald { background-color: var(--primary-violet); }
+.progress-gold    { background-color: var(--primary-cyan); }
+
+/* ─── Hover Glow Utilities ──────────────────────────────────────────────── */
+
+.hover-violet-glow:hover {
+  box-shadow: 0 0 24px var(--violet-glow);
+}
+
+.hover-cyan-glow:hover {
+  box-shadow: 0 0 24px var(--cyan-glow);
+}
+
+/* kept for legacy references */
+.hover-emerald-glow:hover { box-shadow: 0 0 24px var(--violet-glow); }
+.hover-gold-glow:hover    { box-shadow: 0 0 24px var(--cyan-glow); }
+
+/* ─── Gradient Utilities ────────────────────────────────────────────────── */
+
+.gradient-violet-cyan {
+  background: linear-gradient(135deg, var(--primary-violet), var(--primary-cyan));
+}
+
+.gradient-text-violet-cyan {
+  background: linear-gradient(135deg, #A855F7, #67E8F9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Solid Color Aliases (kept for existing Tailwind class usage) ────────── */
+
+.bg-emerald-solid  { background-color: var(--primary-violet); }
+.bg-gold-solid     { background-color: var(--primary-cyan); }
+.bg-emerald-subtle { background-color: var(--violet-subtle); }
