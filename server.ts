@@ -15,7 +15,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
-import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "firebase-admin";
 import { FirestoreRateLimitStore, selectRateLimitKey } from "./firestoreRateLimitStore";
@@ -24,6 +23,9 @@ import { extractResumeDetails } from "./services/resumeExtractor";
 import { parseResumeAndFindJobs } from "./services/parserService";
 import { askChatbot } from "./services/chatbotService";
 import { adminDb } from "./services/firebaseAdmin";
+import { log } from "./logger";
+import { auditMiddleware } from "./auditMiddleware";
+import { validateResponse, isExplainPhaseResponse, isExplainGapResponse, isTrendExplainResponse } from "./apiSchemas";
 
 // ── Firebase Admin SDK init (for server-side token verification) ──────────────
 if (!admin.apps || admin.apps.length === 0) {
@@ -70,22 +72,6 @@ async function optionalAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 async function startServer() {
-  // ── [M5] Validate required environment variables ───────────────────────────
-  const requiredEnvVars = ['SUPABASE_ANON_KEY'];
-  const recommendedEnvVars = ['GEMINI_API_KEY', 'OPENAI_API_KEY'];
-
-  for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-      console.error(`[Server] FATAL: Required environment variable ${envVar} is not set.`);
-      process.exit(1);
-    }
-  }
-  for (const envVar of recommendedEnvVars) {
-    if (!process.env[envVar]) {
-      console.warn(`[Server] WARNING: Recommended environment variable ${envVar} is not set. Some features may not work.`);
-    }
-  }
-
   const app = express();
   const PORT = 3000;
 
@@ -99,12 +85,12 @@ async function startServer() {
       if (process.env.NODE_ENV !== "production" || !process.env.ALLOWED_ORIGINS) {
         return callback(null, true);
       }
-
+      
       const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean);
       if (!origin || allowed.includes(origin)) {
         return callback(null, true);
       }
-
+      
       // Fallback for AI Studio preview URLs
       if (origin.includes("run.app") || origin.includes("google_aistudio")) {
         return callback(null, true);
@@ -114,15 +100,13 @@ async function startServer() {
     },
     credentials: true,
   }));
-  // [C6] Security headers
-  app.use(helmet({
-    contentSecurityPolicy: false,
-  }));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // Trust proxy is required for Cloud Run/container environments to get real IP
   app.set("trust proxy", 1);
+
+  app.use(auditMiddleware);
 
   // ── Rate limiters — prevent API budget drain ──────────────────────────────
   // Backed by Firestore (FirestoreRateLimitStore) instead of the default
@@ -150,7 +134,7 @@ async function startServer() {
       standardHeaders: true,
       legacyHeaders: false,
       handler: (req, res) => {
-        console.warn(`[RateLimit] ${label} limit hit for ${req.body?.userId || req.ip}`);
+        log.warn(`Rate limit hit: ${label}`, { userId: req.body?.userId, ip: req.ip });
         res.status(429).json({
           error: "Rate limit reached",
           message: `You've used this feature too many times. Please wait ${windowMinutes} minutes before trying again.`,
@@ -166,32 +150,31 @@ async function startServer() {
   // Light routes — 60 per hour
   const lightLimiter   = makeRateLimiter(60, 60, "light");
 
-  // ── [H5] Server-side feature usage limits (Free tier) ─────────────────────
-  const FEATURE_LIMITS: Record<string, { collection: string; limit: number }> = {
-    'career-mentor': { collection: 'savedCareerReports', limit: 3 },
-    'radar':         { collection: 'savedRadarAnalyses', limit: 5 },
-    'resume-tools':  { collection: 'savedResumeItems',   limit: 5 },
-    'roadmap':       { collection: 'savedRoadmaps',       limit: 2 },
-  };
+  // Health check — verifies downstream dependencies
+  app.get("/api/health", async (req, res) => {
+    const checks: Record<string, string> = {};
+    const start = Date.now();
 
-  async function checkFeatureLimit(userId: string, feature: string): Promise<boolean> {
-    const config = FEATURE_LIMITS[feature];
-    if (!config) return true;
+    // Firestore
     try {
-      const userDoc = await adminDb.collection("users").doc(userId).get();
-      const data = userDoc.data();
-      if (!data) return true;
-      if (data.tier === "Pro") return true;
-      const used = Array.isArray(data[config.collection]) ? data[config.collection].length : 0;
-      return used < config.limit;
+      await adminDb.collection("users").limit(1).get();
+      checks.firestore = "ok";
     } catch {
-      return true;
+      checks.firestore = "error";
     }
-  }
 
-  // Health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", time: new Date().toISOString() });
+    // Gemini key present
+    checks.gemini = (process.env.GEMINI_API_KEY || process.env.CAREER_MENTOR_GEMINI_API_KEY) ? "configured" : "missing";
+    // Supabase key present
+    checks.supabase = process.env.SUPABASE_ANON_KEY ? "configured" : "missing";
+
+    const allOk = checks.firestore === "ok";
+    res.status(allOk ? 200 : 503).json({
+      status: allOk ? "ok" : "degraded",
+      time: new Date().toISOString(),
+      latencyMs: Date.now() - start,
+      checks,
+    });
   });
 
   // 🚀 Supabase Service Caller (Specifically for CareerAI Roadmap)
@@ -200,8 +183,8 @@ async function startServer() {
     if (!token) {
       throw new Error("SUPABASE_ANON_KEY environment variable is not set on the server.");
     }
-
-    console.log(`Calling Supabase service: ${url}`);
+    
+    log.info("Calling Supabase service", { url });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout
 
@@ -221,7 +204,7 @@ async function startServer() {
       clearTimeout(timeout);
 
       if (!response.ok) {
-        console.error(`Supabase error (${url}):`, responseText);
+        log.error("Supabase error", { url, status: response.status, body: responseText.slice(0, 500) });
         throw new Error(`Supabase Error: ${response.status} ${responseText}`);
       }
 
@@ -240,7 +223,7 @@ async function startServer() {
   };
 
   // ================= ROUTES =================
-
+  
   app.post("/api/resume-tools", requireAuth, mediumLimiter, async (req, res) => {
     req.socket.setTimeout(300000);
     res.setTimeout(300000);
@@ -253,25 +236,12 @@ async function startServer() {
         return res.status(400).json({ error: "Missing required fields: resumeText, jobDescription, mode" });
       }
 
-      // [H5] Server-side feature limit
-      if (!(await checkFeatureLimit(userId, 'resume-tools'))) {
-        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
-      }
-
-      // [H2] Input length validation
-      if (typeof resumeText === "string" && resumeText.length > 100000) {
-        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
-      }
-      if (typeof jobDescription === "string" && jobDescription.length > 50000) {
-        return res.status(400).json({ error: "Job description too long (max 50,000 characters)" });
-      }
-
-      console.log(`[ResumeTools] Processing mode="${mode}" for userId="${userId}"`);
+      log.info("ResumeTools processing", { mode, userId });
 
       const result = await processResumeTools(resumeText, jobDescription, mode, jobTitle, company, tone, userName);
       res.json(result);
     } catch (error: any) {
-      console.error("Resume tools route error:", error);
+      log.error("Resume tools route error", { error: error.message });
       res.status(500).json({ error: "Failed to process resume", message: error.message });
     }
   });
@@ -279,27 +249,12 @@ async function startServer() {
   app.post("/api/trending-skills", requireAuth, mediumLimiter, async (req, res) => {
     try {
       const { role, country } = req.body;
-
-      // [H2] Input length validation
-      if (typeof role === "string" && role.length > 256) {
-        return res.status(400).json({ error: "Role name too long (max 256 characters)" });
-      }
-      if (typeof country === "string" && country.length > 128) {
-        return res.status(400).json({ error: "Country name too long (max 128 characters)" });
-      }
-
-      // [H5] Server-side feature limit
-      const userId = (req as any).verifiedUid;
-      if (!(await checkFeatureLimit(userId, 'radar'))) {
-        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
-      }
-
-      console.log(`[Radar] scanMarket called for role="${role}" country="${country}"`);
+      log.info("Radar scanMarket", { role, country });
       const data = await scanMarket(role, country);
       res.json(data);
     } catch (error: any) {
-      console.error("Trending skills route error:", error);
-      res.status(500).json({
+      log.error("Trending skills route error", { error: error.message });
+      res.status(500).json({ 
         error: "Failed to fetch market data",
         message: error.message || "Unknown error"
       });
@@ -310,18 +265,13 @@ async function startServer() {
     try {
       const { resumeText } = req.body;
       if (!resumeText) throw new Error("resumeText is required");
-
-      // [H2] Input length validation
-      if (typeof resumeText === "string" && resumeText.length > 100000) {
-        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
-      }
-
-      console.log(`[ResumeExtractor] Extracting details (text length: ${resumeText.length})`);
+      
+      log.info("ResumeExtractor extracting details", { textLength: resumeText.length });
       const details = await extractResumeDetails(resumeText);
       res.json(details);
     } catch (error: any) {
-      console.error("Extract resume details error:", error);
-      res.status(500).json({
+      log.error("Extract resume details error", { error: error.message });
+      res.status(500).json({ 
         error: "Failed to extract resume details",
         message: error.message || "Unknown error"
       });
@@ -339,23 +289,7 @@ async function startServer() {
       if (!resumeText) throw new Error("resumeText is required");
       if (!role) throw new Error("role is required");
 
-      // [H2] Input length validation
-      if (typeof resumeText === "string" && resumeText.length > 100000) {
-        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
-      }
-      if (typeof role === "string" && role.length > 256) {
-        return res.status(400).json({ error: "Role name too long (max 256 characters)" });
-      }
-      if (country && typeof country === "string" && country.length > 128) {
-        return res.status(400).json({ error: "Country name too long (max 128 characters)" });
-      }
-
-      // [H9] Log when large resumes are sent to AI providers
-      if (typeof resumeText === "string" && resumeText.length > 50000) {
-        console.warn(`[PII] Large resume (${resumeText.length} chars) being sent to AI provider for userId="${userId}"`);
-      }
-
-      console.log(`[ParserService] parseResumeAndFindJobs called — role="${role}" country="${country}" employmentType="${employmentType}" locationType="${locationType}"`);
+      log.info("ParserService parseResumeAndFindJobs", { role, country, employmentType, locationType });
       const data = await parseResumeAndFindJobs(
         userId,
         resumeText,
@@ -366,50 +300,33 @@ async function startServer() {
       );
       res.json(data);
     } catch (error: any) {
-      console.error("Parse resume route error:", error);
-      res.status(500).json({
+      log.error("Parse resume route error", { error: error.message });
+      res.status(500).json({ 
         error: "Failed to parse resume",
         message: error.message || "Unknown error"
       });
     }
   });
 
-  // [C3] Whitelist allowed Supabase functions
-  const ALLOWED_SUPABASE_FUNCTIONS = new Set([
-    'generate-interview',
-    'evaluate-answer',
-    'question-library',
-    'session-history',
-  ]);
-
   app.post("/api/supabase/:function", requireAuth, lightLimiter, async (req, res) => {
     try {
       const func = req.params.function;
-      if (!ALLOWED_SUPABASE_FUNCTIONS.has(func)) {
-        return res.status(400).json({ error: "Invalid function requested" });
-      }
       const url = `https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/${func}`;
       const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
       res.json(data);
     } catch (error: any) {
-      console.error(`Supabase function error (${req.params.function}):`, error);
+      log.error("Supabase function error", { function: req.params.function, error: error.message });
       res.status(500).json({ error: `Failed to call Supabase feature: ${req.params.function}`, message: error.message });
     }
   });
 
   app.post("/api/generate-roadmap", requireAuth, heavyLimiter, async (req, res) => {
     try {
-      // [H5] Server-side feature limit
-      const userId = (req as any).verifiedUid;
-      if (!(await checkFeatureLimit(userId, 'roadmap'))) {
-        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
-      }
-
       const url = "https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/generate-roadmap";
-      const data = await callSupabaseService(url, { ...req.body, userId });
+      const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
       res.json(data);
     } catch (error: any) {
-      console.error("Generate roadmap error:", error);
+      log.error("Generate roadmap error", { error: error.message });
       res.status(500).json({ error: "Failed to generate roadmap", message: error.message });
     }
   });
@@ -420,7 +337,7 @@ async function startServer() {
       const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
       res.json(data);
     } catch (error: any) {
-      console.error("Suggest resources error:", error);
+      log.error("Suggest resources error", { error: error.message });
       res.status(500).json({ error: "Failed to suggest resources", message: error.message });
     }
   });
@@ -501,9 +418,9 @@ Rules:
         const raw = result.text?.trim() || "";
         if (!raw) throw new Error("Empty Gemini response");
         parsed = JSON.parse(raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim());
-        console.log("[ExplainPhase] Gemini used ✓");
+        log.info("ExplainPhase: Gemini used");
       } catch (geminiErr: any) {
-        console.warn("[ExplainPhase] Gemini failed, falling back to OpenAI:", geminiErr.message);
+        log.warn("ExplainPhase: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
         const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
         if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
         const OpenAI = (await import("openai")).default;
@@ -523,21 +440,20 @@ Rules:
         });
         const raw = completion.choices[0]?.message?.content?.trim() || "";
         parsed = JSON.parse(raw);
-        console.log("[ExplainPhase] OpenAI fallback used ✓");
+        log.info("ExplainPhase: OpenAI fallback used");
       }
 
-      const explanation = {
-        whatYoullLearn: parsed?.whatYoullLearn || "",
-        whatYoullBuild: parsed?.whatYoullBuild || "",
-        topTip: parsed?.topTip || "",
-      };
+      const validated = validateResponse(parsed, isExplainPhaseResponse);
+      const explanation = validated.success
+        ? validated.data
+        : { whatYoullLearn: parsed?.whatYoullLearn || "", whatYoullBuild: parsed?.whatYoullBuild || "", topTip: parsed?.topTip || "" };
+      if (!validated.success) log.warn("ExplainPhase response validation failed, using raw fallback");
 
-      // Cache for next time — most roadmap phases are shared across many users.
       await setPersistentCache("phase_explain", cacheKey, explanation, PHASE_EXPLAIN_TTL_MS);
 
       res.json({ explanation });
     } catch (error: any) {
-      console.error("[ExplainPhase] Error:", error.message);
+      log.error("ExplainPhase error", { error: error.message });
       res.status(500).json({ error: "Failed to explain phase", message: error.message });
     }
   });
@@ -600,9 +516,9 @@ Rules:
         });
         explanation = result.text?.trim() || "";
         if (!explanation) throw new Error("Empty Gemini response");
-        console.log("[ExplainGaps] Gemini used ✓");
+        log.info("ExplainGaps: Gemini used");
       } catch (geminiErr: any) {
-        console.warn("[ExplainGaps] Gemini failed, falling back to OpenAI:", geminiErr.message);
+        log.warn("ExplainGaps: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
         const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
         if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
         const OpenAI = (await import("openai")).default;
@@ -617,12 +533,12 @@ Rules:
           ],
         });
         explanation = completion.choices[0]?.message?.content?.trim() || "";
-        console.log("[ExplainGaps] OpenAI fallback used ✓");
+        log.info("ExplainGaps: OpenAI fallback used");
       }
 
       res.json({ explanation: explanation || "Focus on your highest priority gaps first — they'll have the biggest impact on your job applications." });
     } catch (error: any) {
-      console.error("[ExplainGaps] Error:", error.message);
+      log.error("ExplainGaps error", { error: error.message });
       res.status(500).json({ error: "Failed to explain gaps", message: error.message });
     }
   });
@@ -687,9 +603,9 @@ Rules:
         const raw = result.text?.trim() || "";
         if (!raw) throw new Error("Empty Gemini response");
         parsed = JSON.parse(raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim());
-        console.log("[ExplainSkillGap] Gemini used ✓");
+        log.info("ExplainSkillGap: Gemini used");
       } catch (geminiErr: any) {
-        console.warn("[ExplainSkillGap] Gemini failed, falling back to OpenAI:", geminiErr.message);
+        log.warn("ExplainSkillGap: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
         const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
         if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
         const OpenAI = (await import("openai")).default;
@@ -706,18 +622,19 @@ Rules:
         });
         const raw = completion.choices[0]?.message?.content?.trim() || "";
         parsed = JSON.parse(raw);
-        console.log("[ExplainSkillGap] OpenAI fallback used ✓");
+        log.info("ExplainSkillGap: OpenAI fallback used");
       }
 
-      const explanation = {
-        whyItMatters: parsed?.whyItMatters || "",
-        ifYouSkipIt: parsed?.ifYouSkipIt || "",
-      };
+      const validated = validateResponse(parsed, isExplainGapResponse);
+      const explanation = validated.success
+        ? validated.data
+        : { whyItMatters: parsed?.whyItMatters || "", ifYouSkipIt: parsed?.ifYouSkipIt || "" };
+      if (!validated.success) log.warn("ExplainSkillGap response validation failed, using raw fallback");
 
       await setPersistentCache("skill_gap_explain", cacheKey, explanation, SKILL_GAP_TTL_MS);
       res.json({ explanation });
     } catch (error: any) {
-      console.error("[ExplainSkillGap] Error:", error.message);
+      log.error("ExplainSkillGap error", { error: error.message });
       res.status(500).json({ error: "Failed to explain skill gap", message: error.message });
     }
   });
@@ -779,9 +696,9 @@ Rules:
         const raw = result.text?.trim() || "";
         if (!raw) throw new Error("Empty Gemini response");
         parsed = JSON.parse(raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim());
-        console.log("[ExplainTrend] Gemini used ✓");
+        log.info("ExplainTrend: Gemini used");
       } catch (geminiErr: any) {
-        console.warn("[ExplainTrend] Gemini failed, falling back to OpenAI:", geminiErr.message);
+        log.warn("ExplainTrend: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
         const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
         if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
         const OpenAI = (await import("openai")).default;
@@ -798,18 +715,19 @@ Rules:
         });
         const raw = completion.choices[0]?.message?.content?.trim() || "";
         parsed = JSON.parse(raw);
-        console.log("[ExplainTrend] OpenAI fallback used ✓");
+        log.info("ExplainTrend: OpenAI fallback used");
       }
 
-      const explanation = {
-        whyTrending: parsed?.whyTrending || "",
-        whatsDrivingDemand: parsed?.whatsDrivingDemand || "",
-      };
+      const validated = validateResponse(parsed, isTrendExplainResponse);
+      const explanation = validated.success
+        ? validated.data
+        : { whyTrending: parsed?.whyTrending || "", whatsDrivingDemand: parsed?.whatsDrivingDemand || "" };
+      if (!validated.success) log.warn("ExplainTrend response validation failed, using raw fallback");
 
       await setPersistentCache("trend_explain", cacheKey, explanation, TREND_TTL_MS);
       res.json({ explanation });
     } catch (error: any) {
-      console.error("[ExplainTrend] Error:", error.message);
+      log.error("ExplainTrend error", { error: error.message });
       res.status(500).json({ error: "Failed to explain trend", message: error.message });
     }
   });
@@ -823,11 +741,11 @@ Rules:
       const { goal, level = "beginner", forceRefresh = false, userBackground } = req.body;
       const userId = (req as any).verifiedUid;
       if (!goal) return res.status(400).json({ error: "goal is required" });
-      console.log(`[UseCases] goal="${goal}" level="${level}" userBackground="${userBackground || 'unknown'}" userId="${userId}"`);
+      log.info("UseCases", { goal, level, userBackground: userBackground || "unknown", userId });
       const data = await findUseCases(userId, goal, level, forceRefresh, userBackground);
       res.json(data);
     } catch (error: any) {
-      console.error("[UseCases] Error:", error.message);
+      log.error("UseCases error", { error: error.message });
       res.status(500).json({ error: "Failed to find use cases", message: error.message });
     }
   });
@@ -841,7 +759,7 @@ Rules:
       const data = await generateAssessment(userId, interests, educationLevel, country);
       res.json(data);
     } catch (error: any) {
-      console.error("Error generating assessment:", error);
+      log.error("Error generating assessment", { error: error.message });
       res.status(500).json({ error: "Failed to generate skill assessment", message: error.message });
     }
   });
@@ -854,7 +772,7 @@ Rules:
       const data = await submitAssessment(userId, answers, quiz);
       res.json(data);
     } catch (error: any) {
-      console.error("Error submitting assessment:", error);
+      log.error("Error submitting assessment", { error: error.message });
       res.status(500).json({ error: "Failed to submit assessment answers", message: error.message });
     }
   });
@@ -873,7 +791,7 @@ Rules:
       const data = await generateAssessmentStage1(userId, interests, educationLevel, country);
       res.json(data);
     } catch (error: any) {
-      console.error("Error generating Stage 1 assessment:", error);
+      log.error("Error generating Stage 1 assessment", { error: error.message });
       res.status(500).json({ error: "Failed to generate Stage 1 assessment", message: error.message });
     }
   });
@@ -886,7 +804,7 @@ Rules:
       const data = await analyzeStage1AndGenerateStage2(userId, stage1Answers);
       res.json(data);
     } catch (error: any) {
-      console.error("Error generating Stage 2 assessment:", error);
+      log.error("Error generating Stage 2 assessment", { error: error.message });
       // Session-expiry is a recoverable client error, not a server failure —
       // surface it as 400 so the frontend can show "please restart" instead
       // of a generic failure toast.
@@ -903,7 +821,7 @@ Rules:
       const data = await submitAdaptiveAssessment(userId, stage2Quiz, stage2Answers);
       res.json(data);
     } catch (error: any) {
-      console.error("Error submitting adaptive assessment:", error);
+      log.error("Error submitting adaptive assessment", { error: error.message });
       const status = /session/i.test(error.message) ? 400 : 500;
       res.status(status).json({ error: "Failed to submit adaptive assessment", message: error.message });
     }
@@ -914,13 +832,13 @@ Rules:
       const { verifySupabaseConnection } = await import("./services/careerMentorService");
       const error = await verifySupabaseConnection();
       if (error) {
-        console.error("[VerifyDatabase] Supabase connection check failed:", error);
+        log.error("VerifyDatabase: Supabase connection check failed", { error: String(error) });
         res.status(503).json({ ok: false });
       } else {
         res.json({ ok: true });
       }
     } catch (error: any) {
-      console.error("[VerifyDatabase] Unexpected error:", error);
+      log.error("VerifyDatabase unexpected error", { error: error.message });
       res.status(500).json({ ok: false });
     }
   });
@@ -932,22 +850,16 @@ Rules:
     res.setTimeout(300000);
 
     try {
-      const userId = (req as any).verifiedUid;
-
-      // [H5] Server-side feature limit
-      if (!(await checkFeatureLimit(userId, 'career-mentor'))) {
-        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
-      }
-
       const { getCareerMentorRecommendations } = await import("./services/careerMentorService");
       const { ...formData } = req.body;
+      const userId = (req as any).verifiedUid;
 
-      console.log(`[CareerMentor] Generating local recommendations for userId="${userId}"`);
+      log.info("CareerMentor generating recommendations", { userId });
       const data = await getCareerMentorRecommendations(userId, formData);
       res.json(data);
     } catch (error: any) {
-      console.error("Error fetching career mentor report:", error);
-      res.status(500).json({
+      log.error("Error fetching career mentor report", { error: error.message });
+      res.status(500).json({ 
         error: "Failed to get career mentor report",
         message: error.message || "Unknown error"
       });
@@ -959,7 +871,7 @@ Rules:
       const data = await askChatbot(req.body);
       res.json(data);
     } catch (error) {
-      console.error("Chatbot Error:", error);
+      log.error("Chatbot error", { error: error instanceof Error ? error.message : String(error) });
       res.status(500).json({ error: "Chatbot service unavailable" });
     }
   });
@@ -975,7 +887,7 @@ Rules:
     try {
       decoded = await admin.auth().verifyIdToken(idToken);
     } catch (err: any) {
-      console.error("[AdminAuthError] ID Token verification failed:", err.message);
+      log.error("Admin auth: token verification failed", { error: err.message });
       return res.status(401).json({ error: "Unauthorized: invalid or expired token" });
     }
 
@@ -992,13 +904,12 @@ Rules:
       }
       next();
     } catch (err: any) {
-      console.error("[AdminAuthError] Firestore or role verification failed:", err);
+      log.error("Admin auth: role verification failed", { error: err.message });
       return res.status(500).json({ error: "Internal Server Error: Failed to verify administrative permissions" });
     }
   };
 
-  // [H1] Rate limit admin endpoints
-  app.get("/api/admin/data", requireAdmin, heavyLimiter, async (req, res) => {
+  app.get("/api/admin/data", requireAdmin, async (req, res) => {
     try {
       const dbInstance = adminDb;
 
@@ -1038,13 +949,12 @@ Rules:
         activityLog: activityList
       });
     } catch (error: any) {
-      console.error("[ApiAdminDataError]", error);
+      log.error("Admin data fetch error", { error: error.message });
       res.status(500).json({ error: "Failed to load admin data", message: error.message });
     }
   });
 
-  // [H1] Rate limit admin endpoints
-  app.post("/api/admin/update-user", requireAdmin, heavyLimiter, async (req, res) => {
+  app.post("/api/admin/update-user", requireAdmin, async (req, res) => {
     const { targetUid, updates } = req.body;
     if (!targetUid) {
       return res.status(400).json({ error: "Missing targetUid" });
@@ -1055,7 +965,7 @@ Rules:
 
     try {
       const allowedUpdates: Record<string, any> = {};
-
+      
       if (typeof updates.tier === "string" && ["Free", "Pro"].includes(updates.tier)) {
         allowedUpdates.tier = updates.tier;
       }
@@ -1078,7 +988,7 @@ Rules:
 
       res.json({ success: true, message: `Successfully updated user ${targetUid}` });
     } catch (error: any) {
-      console.error("[ApiAdminUpdateUserError]", error);
+      log.error("Admin update user error", { error: error.message });
       res.status(500).json({ error: "Failed to update user", message: error.message });
     }
   });
@@ -1097,17 +1007,14 @@ Rules:
     const distPath = path.join(process.cwd(), "dist");
 
     if (fs.existsSync(distPath)) {
-      console.log(`[Server] Serving static files from: ${distPath}`);
+      log.info("Serving static files", { path: distPath });
       app.use(express.static(distPath));
       app.get("*", (_, res) => {
         res.sendFile(path.join(distPath, "index.html"));
       });
     } else {
       // dist/ not found — server still binds to port so Cloud Run health check passes
-      console.error(
-        "[Server] WARNING: dist/ folder not found. The frontend was not built. " +
-        "Ensure 'npm run build' runs before 'npm start'."
-      );
+      log.error("dist/ folder not found — frontend was not built. Run 'npm run build' before 'npm start'.");
       app.get("*", (_, res) => {
         res
           .status(503)
@@ -1120,28 +1027,18 @@ Rules:
 
   // Global error handler — registered correctly before app.listen
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("[GlobalError]", err);
+    log.error("Unhandled error", { error: err.message, stack: err.stack });
     res.status(500).json({
       error: "Internal Server Error",
     });
   });
 
-  // [M6] Graceful shutdown
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  });
-
-  process.on("SIGTERM", () => {
-    console.log("[Server] SIGTERM received, shutting down gracefully...");
-    server.close(() => {
-      console.log("[Server] All connections closed. Exiting.");
-      process.exit(0);
-    });
+  app.listen(PORT, "0.0.0.0", () => {
+    log.info("Server started", { port: PORT, env: process.env.NODE_ENV || "development" });
   });
 }
 
 startServer().catch((err) => {
-  console.error("[Server] Fatal startup error:", err);
+  log.error("Fatal startup error", { error: err.message });
   process.exit(1);
 });

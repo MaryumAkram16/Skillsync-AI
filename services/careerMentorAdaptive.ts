@@ -75,7 +75,7 @@ async function getAdaptiveSessionDoc(userId: string): Promise<AdaptiveSessionSta
   }
 }
 
-const ASSESSMENT_SESSION_TTL_MS = 60 * 60 * 1000; // 1h — enough to finish a quiz, not a permanent record
+const ASSESSMENT_SESSION_TTL_MS = 20 * 60 * 1000; // 20min — enough to finish a quiz, not a permanent record
 
 async function saveAdaptiveSession(userId: string, state: AdaptiveSessionState): Promise<void> {
   await saveAdaptiveSessionDoc(userId, state, ASSESSMENT_SESSION_TTL_MS);
@@ -236,7 +236,7 @@ export async function analyzeStage1AndGenerateStage2(
   const session = await getAdaptiveSession(userId);
   if (!session || !session.stage1Quiz?.length) {
     throw new Error(
-      "No active Stage 1 session found. The assessment session may have expired (1h limit) — please restart the assessment."
+      "No active Stage 1 session found. The assessment session may have expired (20-minute limit) — please restart the assessment."
     );
   }
 
@@ -380,7 +380,7 @@ export async function submitAdaptiveAssessment(
   const session = await getAdaptiveSession(userId);
   if (!session || !session.stage1Quiz?.length) {
     throw new Error(
-      "No active assessment session found. The session may have expired (1h limit) — please restart the assessment."
+      "No active assessment session found. The session may have expired (20-minute limit) — please restart the assessment."
     );
   }
   if (!session.stage1Answers?.length) {
