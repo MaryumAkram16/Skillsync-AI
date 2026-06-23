@@ -70,6 +70,22 @@ async function optionalAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 async function startServer() {
+  // ── [M5] Validate required environment variables ───────────────────────────
+  const requiredEnvVars = ['SUPABASE_ANON_KEY'];
+  const recommendedEnvVars = ['GEMINI_API_KEY', 'OPENAI_API_KEY'];
+
+  for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+      console.error(`[Server] FATAL: Required environment variable ${envVar} is not set.`);
+      process.exit(1);
+    }
+  }
+  for (const envVar of recommendedEnvVars) {
+    if (!process.env[envVar]) {
+      console.warn(`[Server] WARNING: Recommended environment variable ${envVar} is not set. Some features may not work.`);
+    }
+  }
+
   const app = express();
   const PORT = 3000;
 
@@ -83,12 +99,12 @@ async function startServer() {
       if (process.env.NODE_ENV !== "production" || !process.env.ALLOWED_ORIGINS) {
         return callback(null, true);
       }
-      
+
       const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean);
       if (!origin || allowed.includes(origin)) {
         return callback(null, true);
       }
-      
+
       // Fallback for AI Studio preview URLs
       if (origin.includes("run.app") || origin.includes("google_aistudio")) {
         return callback(null, true);
@@ -98,6 +114,7 @@ async function startServer() {
     },
     credentials: true,
   }));
+  // [C6] Security headers
   app.use(helmet({
     contentSecurityPolicy: false,
   }));
@@ -149,6 +166,29 @@ async function startServer() {
   // Light routes — 60 per hour
   const lightLimiter   = makeRateLimiter(60, 60, "light");
 
+  // ── [H5] Server-side feature usage limits (Free tier) ─────────────────────
+  const FEATURE_LIMITS: Record<string, { collection: string; limit: number }> = {
+    'career-mentor': { collection: 'savedCareerReports', limit: 3 },
+    'radar':         { collection: 'savedRadarAnalyses', limit: 5 },
+    'resume-tools':  { collection: 'savedResumeItems',   limit: 5 },
+    'roadmap':       { collection: 'savedRoadmaps',       limit: 2 },
+  };
+
+  async function checkFeatureLimit(userId: string, feature: string): Promise<boolean> {
+    const config = FEATURE_LIMITS[feature];
+    if (!config) return true;
+    try {
+      const userDoc = await adminDb.collection("users").doc(userId).get();
+      const data = userDoc.data();
+      if (!data) return true;
+      if (data.tier === "Pro") return true;
+      const used = Array.isArray(data[config.collection]) ? data[config.collection].length : 0;
+      return used < config.limit;
+    } catch {
+      return true;
+    }
+  }
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
@@ -160,7 +200,7 @@ async function startServer() {
     if (!token) {
       throw new Error("SUPABASE_ANON_KEY environment variable is not set on the server.");
     }
-    
+
     console.log(`Calling Supabase service: ${url}`);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout
@@ -200,7 +240,7 @@ async function startServer() {
   };
 
   // ================= ROUTES =================
-  
+
   app.post("/api/resume-tools", requireAuth, mediumLimiter, async (req, res) => {
     req.socket.setTimeout(300000);
     res.setTimeout(300000);
@@ -211,6 +251,19 @@ async function startServer() {
 
       if (!resumeText || !jobDescription || !mode) {
         return res.status(400).json({ error: "Missing required fields: resumeText, jobDescription, mode" });
+      }
+
+      // [H5] Server-side feature limit
+      if (!(await checkFeatureLimit(userId, 'resume-tools'))) {
+        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
+      }
+
+      // [H2] Input length validation
+      if (typeof resumeText === "string" && resumeText.length > 100000) {
+        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
+      }
+      if (typeof jobDescription === "string" && jobDescription.length > 50000) {
+        return res.status(400).json({ error: "Job description too long (max 50,000 characters)" });
       }
 
       console.log(`[ResumeTools] Processing mode="${mode}" for userId="${userId}"`);
@@ -226,12 +279,27 @@ async function startServer() {
   app.post("/api/trending-skills", requireAuth, mediumLimiter, async (req, res) => {
     try {
       const { role, country } = req.body;
+
+      // [H2] Input length validation
+      if (typeof role === "string" && role.length > 256) {
+        return res.status(400).json({ error: "Role name too long (max 256 characters)" });
+      }
+      if (typeof country === "string" && country.length > 128) {
+        return res.status(400).json({ error: "Country name too long (max 128 characters)" });
+      }
+
+      // [H5] Server-side feature limit
+      const userId = (req as any).verifiedUid;
+      if (!(await checkFeatureLimit(userId, 'radar'))) {
+        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
+      }
+
       console.log(`[Radar] scanMarket called for role="${role}" country="${country}"`);
       const data = await scanMarket(role, country);
       res.json(data);
     } catch (error: any) {
       console.error("Trending skills route error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch market data",
         message: error.message || "Unknown error"
       });
@@ -242,13 +310,18 @@ async function startServer() {
     try {
       const { resumeText } = req.body;
       if (!resumeText) throw new Error("resumeText is required");
-      
+
+      // [H2] Input length validation
+      if (typeof resumeText === "string" && resumeText.length > 100000) {
+        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
+      }
+
       console.log(`[ResumeExtractor] Extracting details (text length: ${resumeText.length})`);
       const details = await extractResumeDetails(resumeText);
       res.json(details);
     } catch (error: any) {
       console.error("Extract resume details error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to extract resume details",
         message: error.message || "Unknown error"
       });
@@ -266,6 +339,22 @@ async function startServer() {
       if (!resumeText) throw new Error("resumeText is required");
       if (!role) throw new Error("role is required");
 
+      // [H2] Input length validation
+      if (typeof resumeText === "string" && resumeText.length > 100000) {
+        return res.status(400).json({ error: "Resume text too long (max 100,000 characters)" });
+      }
+      if (typeof role === "string" && role.length > 256) {
+        return res.status(400).json({ error: "Role name too long (max 256 characters)" });
+      }
+      if (country && typeof country === "string" && country.length > 128) {
+        return res.status(400).json({ error: "Country name too long (max 128 characters)" });
+      }
+
+      // [H9] Log when large resumes are sent to AI providers
+      if (typeof resumeText === "string" && resumeText.length > 50000) {
+        console.warn(`[PII] Large resume (${resumeText.length} chars) being sent to AI provider for userId="${userId}"`);
+      }
+
       console.log(`[ParserService] parseResumeAndFindJobs called — role="${role}" country="${country}" employmentType="${employmentType}" locationType="${locationType}"`);
       const data = await parseResumeAndFindJobs(
         userId,
@@ -278,16 +367,27 @@ async function startServer() {
       res.json(data);
     } catch (error: any) {
       console.error("Parse resume route error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to parse resume",
         message: error.message || "Unknown error"
       });
     }
   });
 
+  // [C3] Whitelist allowed Supabase functions
+  const ALLOWED_SUPABASE_FUNCTIONS = new Set([
+    'generate-interview',
+    'evaluate-answer',
+    'question-library',
+    'session-history',
+  ]);
+
   app.post("/api/supabase/:function", requireAuth, lightLimiter, async (req, res) => {
     try {
       const func = req.params.function;
+      if (!ALLOWED_SUPABASE_FUNCTIONS.has(func)) {
+        return res.status(400).json({ error: "Invalid function requested" });
+      }
       const url = `https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/${func}`;
       const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
       res.json(data);
@@ -299,8 +399,14 @@ async function startServer() {
 
   app.post("/api/generate-roadmap", requireAuth, heavyLimiter, async (req, res) => {
     try {
+      // [H5] Server-side feature limit
+      const userId = (req as any).verifiedUid;
+      if (!(await checkFeatureLimit(userId, 'roadmap'))) {
+        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
+      }
+
       const url = "https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/generate-roadmap";
-      const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
+      const data = await callSupabaseService(url, { ...req.body, userId });
       res.json(data);
     } catch (error: any) {
       console.error("Generate roadmap error:", error);
@@ -826,16 +932,22 @@ Rules:
     res.setTimeout(300000);
 
     try {
+      const userId = (req as any).verifiedUid;
+
+      // [H5] Server-side feature limit
+      if (!(await checkFeatureLimit(userId, 'career-mentor'))) {
+        return res.status(403).json({ error: "Feature limit reached. Upgrade to Pro for more access." });
+      }
+
       const { getCareerMentorRecommendations } = await import("./services/careerMentorService");
       const { ...formData } = req.body;
-      const userId = (req as any).verifiedUid;
 
       console.log(`[CareerMentor] Generating local recommendations for userId="${userId}"`);
       const data = await getCareerMentorRecommendations(userId, formData);
       res.json(data);
     } catch (error: any) {
       console.error("Error fetching career mentor report:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to get career mentor report",
         message: error.message || "Unknown error"
       });
@@ -885,7 +997,8 @@ Rules:
     }
   };
 
-  app.get("/api/admin/data", requireAdmin, async (req, res) => {
+  // [H1] Rate limit admin endpoints
+  app.get("/api/admin/data", requireAdmin, heavyLimiter, async (req, res) => {
     try {
       const dbInstance = adminDb;
 
@@ -930,7 +1043,8 @@ Rules:
     }
   });
 
-  app.post("/api/admin/update-user", requireAdmin, async (req, res) => {
+  // [H1] Rate limit admin endpoints
+  app.post("/api/admin/update-user", requireAdmin, heavyLimiter, async (req, res) => {
     const { targetUid, updates } = req.body;
     if (!targetUid) {
       return res.status(400).json({ error: "Missing targetUid" });
@@ -941,7 +1055,7 @@ Rules:
 
     try {
       const allowedUpdates: Record<string, any> = {};
-      
+
       if (typeof updates.tier === "string" && ["Free", "Pro"].includes(updates.tier)) {
         allowedUpdates.tier = updates.tier;
       }
@@ -1012,9 +1126,18 @@ Rules:
     });
   });
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // [M6] Graceful shutdown
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  });
+
+  process.on("SIGTERM", () => {
+    console.log("[Server] SIGTERM received, shutting down gracefully...");
+    server.close(() => {
+      console.log("[Server] All connections closed. Exiting.");
+      process.exit(0);
+    });
   });
 }
 
