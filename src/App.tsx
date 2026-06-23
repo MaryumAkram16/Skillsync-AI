@@ -26,6 +26,7 @@ import { UserProvider, useUser } from "./context/UserContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast"; // <-- ADDED
 import { RouteLoadingSkeleton } from "./components/SkeletonLoaders";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isAuthReady, user } = useUser();
@@ -127,6 +128,7 @@ export default function App() {
                 <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
                 <Route path="/demos" element={<DemosPage />} />
               </Routes>
+              <ScrollToTop />
             </Router>
           </ToastProvider> {/* <-- ADDED */}
         </UserProvider>
