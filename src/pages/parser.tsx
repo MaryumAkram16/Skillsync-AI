@@ -13,6 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { gapDataService } from "../services/gapDataService";
 import { saveResultToProfile } from "../services/profileService";
 import { SAMPLE_PROFILES } from "../data/sampleProfiles";
+import ResumeConsentModal, { hasResumeConsent } from "../components/ResumeConsentModal";
 import { GapAnalysisResult } from "../types/profile";
 import { 
   trackFeatureStart, 
@@ -31,6 +32,8 @@ export default function ParserPage() {
   
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState<React.FormEvent | null>(null);
 
   // Manual Form States
   const [fullName, setFullName] = useState("");
@@ -200,7 +203,13 @@ export default function ParserPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!hasResumeConsent()) {
+      setPendingSubmit(e);
+      setShowConsent(true);
+      return;
+    }
+
     let resumeText = "";
     
     if (tab === "upload") {
@@ -1208,6 +1217,17 @@ Summary: ${summary}`;
           </motion.div>
         )}
       </AnimatePresence>
+      <ResumeConsentModal
+        isOpen={showConsent}
+        onAccept={() => {
+          setShowConsent(false);
+          if (pendingSubmit) handleSubmit(pendingSubmit);
+        }}
+        onDecline={() => {
+          setShowConsent(false);
+          setPendingSubmit(null);
+        }}
+      />
     </DashboardLayout>
   );
 }

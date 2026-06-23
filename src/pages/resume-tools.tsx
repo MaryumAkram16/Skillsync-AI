@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrors";
+import ResumeConsentModal, { hasResumeConsent } from "../components/ResumeConsentModal";
 import { 
   UploadCloud, 
   CheckCircle2, 
@@ -73,6 +74,8 @@ export default function ResumeToolsPage() {
   
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState<React.FormEvent | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Manual Form States
@@ -388,6 +391,11 @@ export default function ResumeToolsPage() {
 
 
   const handleSubmit = async () => {
+    if (!hasResumeConsent()) {
+      setShowConsent(true);
+      return;
+    }
+
     let resumeText = "";
 
     if (tab === "upload") {
@@ -1800,6 +1808,16 @@ Summary: ${summary}`;
       </>
     )}
   </div>
+      <ResumeConsentModal
+        isOpen={showConsent}
+        onAccept={() => {
+          setShowConsent(false);
+          handleSubmit();
+        }}
+        onDecline={() => {
+          setShowConsent(false);
+        }}
+      />
     </DashboardLayout>
   );
 }
