@@ -35,7 +35,7 @@ const ai = new GoogleGenAI({
 // Firestore is briefly unreachable; see persistentCache.ts for details) ──────
 
 const RADAR_NAMESPACE = "radar";
-const RADAR_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const RADAR_TTL_MS = parseInt(process.env.RADAR_TTL_HOURS || "24") * 60 * 60 * 1000;
 
 function radarCacheKey(role: string, country: string): string {
   return `${role.toLowerCase().trim()}|${country.toLowerCase().trim()}`;

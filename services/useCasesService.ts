@@ -5,8 +5,8 @@ import { singleFlight } from "./singleFlight";
 import { searchSerp, SerpResult } from "./serpClient";
 
 // useCasesService.ts
-// Local port of the find-use-cases Supabase edge function.
-// Same logic, same output — runs on your Express server using your own .env keys.
+// Local service for finding real-world use cases and success stories.
+// Runs on your Express server using your own .env keys.
 // Pattern: identical to radarService.ts
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export interface UseCasesResult {
 // Firestore is briefly unreachable; see persistentCache.ts for details) ──────
 
 const USECASES_NAMESPACE = "usecases";
-const USECASES_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+const USECASES_TTL_MS = parseInt(process.env.USECASES_TTL_HOURS || "12") * 60 * 60 * 1000;
 
 function makeCacheKey(goal: string, level: string, userBackground?: string): string {
   const bg = (userBackground || "unknown").toLowerCase().trim();

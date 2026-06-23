@@ -93,8 +93,8 @@ export async function generateAssessmentStage1(
   educationLevel: string,
   country: string
 ): Promise<{ quiz: QuizQuestion[]; stage: 1 }> {
-  const { checkAssessmentLimit } = await import("./careerMentorAssessment");
-  await checkAssessmentLimit(userId);
+  const { checkAndIncrementAssessmentLimit } = await import("./careerMentorAssessment");
+  await checkAndIncrementAssessmentLimit(userId);
 
   const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
   const geminiKey = (process.env.CAREER_MENTOR_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_KEY || "").trim();
@@ -167,15 +167,6 @@ Return ONLY raw JSON:
     country,
     interests,
     createdAt: Date.now(),
-  });
-
-  // Increment assessmentCount in user metadata
-  await adminDb.collection("users").doc(userId).set({
-    metadata: {
-      assessmentCount: admin.firestore.FieldValue.increment(1)
-    }
-  }, { merge: true }).catch(err => {
-    console.warn("Failed to increment user assessment count:", err.message);
   });
 
   return { quiz: stage1Quiz, stage: 1 };

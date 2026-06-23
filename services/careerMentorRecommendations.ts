@@ -17,7 +17,7 @@ import { CareerMentorResult, EnhancedCareerRecommendation, DataQuality, SuccessS
 // Firestore is briefly unreachable; see persistentCache.ts for details) ──────
 
 const MENTOR_NAMESPACE = "mentor";
-const MENTOR_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const MENTOR_TTL_MS = parseInt(process.env.MENTOR_TTL_HOURS || "24") * 60 * 60 * 1000;
 
 async function getCachedMentorResult(cacheKey: string): Promise<CareerMentorResult | null> {
   const result = await getPersistentCache<CareerMentorResult>(MENTOR_NAMESPACE, cacheKey);
@@ -379,7 +379,7 @@ Return JSON:
   return result;
 }
 
-// ─── Success Stories Generator (deprecated — use Supabase edge fn) ────────────
+// ─── Success Stories Generator (deprecated — use /api/find-use-cases) ────────
 
 export async function generateSuccessStories(
   _userId: string,
@@ -387,7 +387,7 @@ export async function generateSuccessStories(
   _level: string
 ): Promise<SuccessStory[]> {
   throw new Error(
-    "generateSuccessStories is deprecated. Use the find-use-cases Supabase edge function instead " +
-    "(api.findUseCases), which returns real stories sourced from SerpAPI."
+    "generateSuccessStories is deprecated. Use the /api/find-use-cases endpoint instead " +
+    "(api.findUseCases), which calls useCasesService and returns real stories sourced from SerpAPI."
   );
 }

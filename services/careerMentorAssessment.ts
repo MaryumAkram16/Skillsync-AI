@@ -6,18 +6,21 @@ import { buildAssessmentProfile, generateAndValidateQuiz } from "./careerMentorQ
 import { InterestWithProficiency, QuizQuestion } from "./careerMentorTypes";
 
 /**
- * Checks the current user's document in Firestore for a 'metadata.assessmentCount' field
- * and prevents further assessments if it has reached or exceeded the threshold of 3.
+ * Atomically checks the assessment limit and increments the count in a single
+ * Firestore transaction, preventing race conditions from concurrent requests.
  */
-export async function checkAssessmentLimit(userId: string): Promise<void> {
-  const userDoc = await adminDb.collection("users").doc(userId).get();
-  if (userDoc.exists) {
+export async function checkAndIncrementAssessmentLimit(userId: string): Promise<void> {
+  const userRef = adminDb.collection("users").doc(userId);
+  await adminDb.runTransaction(async (tx) => {
+    const userDoc = await tx.get(userRef);
     const data = userDoc.data();
     const assessmentCount = data?.metadata?.assessmentCount ?? 0;
-    if (assessmentCount >= 3) {
+    const maxAssessments = parseInt(process.env.MAX_FREE_ASSESSMENTS || "3");
+    if (assessmentCount >= maxAssessments) {
       throw new Error("Assessment limit reached. You can only perform up to 3 assessments.");
     }
-  }
+    tx.set(userRef, { metadata: { assessmentCount: assessmentCount + 1 } }, { merge: true });
+  });
 }
 
 /**
@@ -35,7 +38,7 @@ export async function generateAssessment(
   educationLevel: string,
   country: string
 ): Promise<{ quiz: QuizQuestion[] }> {
-  await checkAssessmentLimit(userId);
+  await checkAndIncrementAssessmentLimit(userId);
 
   const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
   if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
@@ -99,15 +102,6 @@ Return ONLY raw JSON:
 
   // No seed here — every quiz should be unique even for the same profile
   const validatedQuiz = await generateAndValidateQuiz(systemMessage, apiKey);
-
-  // Increment assessmentCount in user metadata
-  await adminDb.collection("users").doc(userId).set({
-    metadata: {
-      assessmentCount: admin.firestore.FieldValue.increment(1)
-    }
-  }, { merge: true }).catch(err => {
-    console.warn("Failed to increment user assessment count:", err.message);
-  });
 
   return { quiz: validatedQuiz };
 }

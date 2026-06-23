@@ -359,7 +359,7 @@ async function startServer() {
       const { getPersistentCache, setPersistentCache } = await import("./services/persistentCache");
       const cacheKey = [phaseName, topicList, toolList, milestoneProject, checkpoint]
         .join("|").toLowerCase().replace(/\s+/g, " ").trim();
-      const PHASE_EXPLAIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — phase content rarely changes
+      const PHASE_EXPLAIN_TTL_MS = parseInt(process.env.PHASE_EXPLAIN_TTL_DAYS || "30") * 24 * 60 * 60 * 1000;
 
       const cached = await getPersistentCache<{ whatYoullLearn: string; whatYoullBuild: string; topTip: string }>(
         "phase_explain", cacheKey
@@ -555,7 +555,7 @@ Rules:
       const { getPersistentCache, setPersistentCache } = await import("./services/persistentCache");
       const cacheKey = [skill, priority || "unspecified", targetRole || "unspecified"]
         .join("|").toLowerCase().replace(/\s+/g, " ").trim();
-      const SKILL_GAP_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+      const SKILL_GAP_TTL_MS = parseInt(process.env.SKILL_GAP_TTL_DAYS || "30") * 24 * 60 * 60 * 1000;
 
       const cached = await getPersistentCache<{ whyItMatters: string; ifYouSkipIt: string }>(
         "skill_gap_explain", cacheKey
@@ -649,7 +649,7 @@ Rules:
       const { getPersistentCache, setPersistentCache } = await import("./services/persistentCache");
       const cacheKey = [skill, tier || "unspecified", role || "unspecified", country || "unspecified"]
         .join("|").toLowerCase().replace(/\s+/g, " ").trim();
-      const TREND_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days — market trends shift faster than roadmap content
+      const TREND_TTL_MS = parseInt(process.env.TREND_TTL_DAYS || "14") * 24 * 60 * 60 * 1000;
 
       const cached = await getPersistentCache<{ whyTrending: string; whatsDrivingDemand: string }>(
         "trend_explain", cacheKey
@@ -912,41 +912,34 @@ Rules:
   app.get("/api/admin/data", requireAdmin, async (req, res) => {
     try {
       const dbInstance = adminDb;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+      const offset = (page - 1) * limit;
 
-      const usersSnap = await dbInstance.collection("users").get();
-      const usersList = usersSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
+      const usersSnap = await dbInstance.collection("users").limit(limit).offset(offset).get();
+      const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const platformFeedbackSnap = await dbInstance.collection("platformFeedback").get();
-      const platformFeedbackList = platformFeedbackSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
+      const platformFeedbackSnap = await dbInstance.collection("platformFeedback").limit(limit).offset(offset).get();
+      const platformFeedbackList = platformFeedbackSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const userFeedbackSnap = await dbInstance.collection("userFeedback").get();
-      const userFeedbackList = userFeedbackSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
+      const userFeedbackSnap = await dbInstance.collection("userFeedback").limit(limit).offset(offset).get();
+      const userFeedbackList = userFeedbackSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       const activityLogSnap = await dbInstance.collection("activityLog")
         .orderBy("timestamp", "desc")
-        .limit(100)
+        .limit(limit)
+        .offset(offset)
         .get()
         .catch(() => ({ docs: [] }) as any);
 
-      const activityList = activityLogSnap.docs.map((d: any) => ({
-        id: d.id,
-        ...d.data()
-      }));
+      const activityList = activityLogSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
 
       res.json({
         users: usersList,
         platformFeedback: platformFeedbackList,
         userFeedback: userFeedbackList,
-        activityLog: activityList
+        activityLog: activityList,
+        pagination: { page, limit }
       });
     } catch (error: any) {
       log.error("Admin data fetch error", { error: error.message });
