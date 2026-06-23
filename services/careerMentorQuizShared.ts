@@ -54,7 +54,7 @@ export async function buildAssessmentProfile(
 Use this data to ground career_awareness questions in real market facts.`;
     }
   } catch (e) {
-    console.warn("[Assessment] Market fetch failed, continuing:", e);
+    // Market data is optional — quiz generation continues without it
   }
 
   // ── Per-skill difficulty rules (the core of dynamic quiz) ──────────────────
@@ -121,7 +121,7 @@ export async function generateAndValidateQuiz(
     const vParsed = parseJsonResponse(vRaw);
     validatedQuiz = Array.isArray(vParsed) ? vParsed : vParsed.quiz ?? generated.quiz;
   } catch (e) {
-    console.warn("[Assessment] Validation pass failed (Gemini-only, no OpenAI fallback by design), using unvalidated generated quiz:", e);
+    // Validation is Gemini-only by design — unvalidated quiz is acceptable
   }
 
   // ── Structural safety: drop any question with invalid correct_answer ────────

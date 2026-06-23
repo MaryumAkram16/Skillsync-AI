@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import admin, { adminDb } from "./firebaseAdmin";
 import { callAI } from "./careerMentorAI";
 import { parseJsonResponse, deriveStrengths, deriveWeaknesses } from "./careerMentorHelpers";
-import { buildAssessmentProfile, generateAndValidateQuiz } from "./careerMentorQuizShared";
+import { buildAssessmentProfile, generateAndValidateQuiz, gradeQuizLocally } from "./careerMentorQuizShared";
 import { InterestWithProficiency, QuizQuestion } from "./careerMentorTypes";
 
 /**
@@ -117,36 +117,8 @@ export async function submitAssessment(
   if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
   const openai = new OpenAI({ apiKey });
 
-  // ── 1. Grade locally — deterministic, no AI ─────────────────────────────────
-  const questionBreakdown = quiz.map((q, idx) => {
-    const isCorrect = q.correct_answer === rawAnswers[idx];
-    return {
-      question: q.question,
-      userAnswer: q.options[rawAnswers[idx] as keyof typeof q.options] || "No answer",
-      correctAnswer: q.options[q.correct_answer as keyof typeof q.options] || "Unknown",
-      isCorrect,
-      category: q.category || "general",
-      skillsInvolved: q.skillsInvolved || [],
-      explanation: q.explanation || "",
-    };
-  });
+  const { questionBreakdown, score, categoryScores } = gradeQuizLocally(quiz, rawAnswers);
 
-  const numCorrect = questionBreakdown.filter((q) => q.isCorrect).length;
-  const score = Math.round((numCorrect / quiz.length) * 100);
-
-  // ── 2. Category scores — computed, not AI ────────────────────────────────────
-  const categoryStats: Record<string, { total: number; correct: number }> = {};
-  for (const q of questionBreakdown) {
-    if (!categoryStats[q.category]) categoryStats[q.category] = { total: 0, correct: 0 };
-    categoryStats[q.category].total++;
-    if (q.isCorrect) categoryStats[q.category].correct++;
-  }
-  const categoryScores: Record<string, number> = {};
-  for (const [cat, stats] of Object.entries(categoryStats)) {
-    categoryScores[cat] = Math.round((stats.correct / stats.total) * 100);
-  }
-
-  // ── 3. Identified skills — from actual correct answers ───────────────────────
   const uniqueIdentifiedSkills = [
     ...new Set(
       questionBreakdown
@@ -155,17 +127,15 @@ export async function submitAssessment(
     ),
   ];
 
-  // ── 4. Strengths & weaknesses — computed from real scores, no AI ─────────────
   const computedStrengths = deriveStrengths(categoryScores);
   const computedWeaknesses = deriveWeaknesses(categoryScores);
 
-  // ── 5. Skill level — derived from real score ─────────────────────────────────
   const skillLevel =
     score >= 90 ? "Expert" :
     score >= 70 ? "Advanced" :
     score >= 40 ? "Intermediate" : "Beginner";
 
-  // ── 6. AI writes narrative ONLY — Gemini first, OpenAI fallback ─────────────
+  // ── AI writes narrative ONLY — Gemini first, OpenAI fallback ───────────────
   const raw = await callAI(
     "You are a Career Mentor writing personalized assessment feedback. " +
     "You receive pre-computed scores and category data. " +
@@ -180,7 +150,7 @@ export async function submitAssessment(
   );
   const aiNarrative = parseJsonResponse(raw);
 
-  // ── 7. Return — real data takes priority, AI only fills narrative ─────────────
+  // ── Return — real data takes priority, AI only fills narrative ───────────────
   return {
     score,
     skillLevel,
