@@ -3,6 +3,7 @@ import { scanMarket } from "./radarService";
 import { runWithConcurrency } from "./geminiRetry";
 import { getPersistentCache, setPersistentCache } from "./persistentCache";
 import { callAI } from "./careerMentorAI";
+import { log } from "../logger";
 import {
   parseJsonResponse,
   calculateMatchScore,
@@ -22,13 +23,13 @@ const MENTOR_TTL_MS = parseInt(process.env.MENTOR_TTL_HOURS || "24") * 60 * 60 *
 async function getCachedMentorResult(cacheKey: string): Promise<CareerMentorResult | null> {
   const result = await getPersistentCache<CareerMentorResult>(MENTOR_NAMESPACE, cacheKey);
   if (!result) return null;
-  console.log(`[CareerMentor] Cache HIT for key: ${cacheKey}`);
+  log.info("CareerMentor cache hit", { cacheKey });
   return { ...result, fromCache: true };
 }
 
 async function setCachedMentorResult(cacheKey: string, result: CareerMentorResult): Promise<void> {
   await setPersistentCache(MENTOR_NAMESPACE, cacheKey, result, MENTOR_TTL_MS);
-  console.log(`[CareerMentor] Cached result for key: ${cacheKey}`);
+  log.info("CareerMentor result cached", { cacheKey });
 }
 
 // ─── Verify Connection ────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ export async function getCareerMentorRecommendations(
       backgroundContext = `\nBackground context for ${fieldOfStudy} in ${country}: top skills in market are ${topSkills}.`;
     }
   } catch (e) {
-    console.warn("[CareerMentor] Background context fetch failed:", e);
+    log.warn("CareerMentor background context fetch failed", { error: e instanceof Error ? e.message : String(e) });
   }
 
   // ── STEP 3: AI FIELD RECOMMENDER — Gemini first, OpenAI fallback ────────────
@@ -244,7 +245,7 @@ Return JSON:
           : radar.technicalSkills.medium.length > 0 ? 2 : 1,
       });
     } catch (e) {
-      console.warn(`[CareerMentor] Post-rec scan failed for "${field}":`, e);
+      log.warn("CareerMentor post-rec scan failed", { field, error: e instanceof Error ? e.message : String(e) });
     }
   });
 
@@ -254,7 +255,7 @@ Return JSON:
   let marketData: any = null;
   try {
     // Replace n8n webhook with local scanMarket call
-    console.log(`[CareerMentor] Fetching market data locally for report: ${topField}`);
+    log.info("CareerMentor fetching market data", { topField });
     const radar = await scanMarket(topField, country);
     marketData = {
       technicalSkills: radar.technicalSkills,
@@ -262,7 +263,7 @@ Return JSON:
       salaryIntel: radar.salaryIntel
     };
   } catch (e) {
-    console.warn("[CareerMentor] Local market data scan failed, continuing:", e);
+    log.warn("CareerMentor market data scan failed", { error: e instanceof Error ? e.message : String(e) });
   }
 
   // ── STEP 5: BUILD MENTOR REPORT — Gemini first, OpenAI fallback ─────────────

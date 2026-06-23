@@ -562,8 +562,16 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 <div className="p-8 overflow-y-auto custom-scrollbar">
-                  <div className="bg-background/50 rounded-3xl p-6 border border-border text-text-secondary whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                    {JSON.stringify(selectedResult.data, null, 2)}
+                  <div className="bg-background/50 rounded-3xl p-6 border border-border text-text-secondary text-sm leading-relaxed space-y-3">
+                    {selectedResult.data && typeof selectedResult.data === "object"
+                      ? Object.entries(selectedResult.data).map(([key, value]) => (
+                          <div key={key}>
+                            <span className="font-semibold text-text-primary capitalize">{key.replace(/([A-Z])/g, " $1").replace(/_/g, " ")}: </span>
+                            <span>{typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}</span>
+                          </div>
+                        ))
+                      : <p>{String(selectedResult.data)}</p>
+                    }
                   </div>
                 </div>
                 <div className="p-8 border-t border-border flex justify-end">

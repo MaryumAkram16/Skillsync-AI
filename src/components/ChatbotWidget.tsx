@@ -65,12 +65,6 @@ export function ChatbotWidget() {
   const historyKey = user?.uid ? `skillsync_chatbot_history_${user.uid}` : null;
   const sessionKey = user?.uid ? `skillsync_chatbot_session_${user.uid}` : null;
 
-  // One-time cleanup of the old, unscoped keys from before this was per-user.
-  useEffect(() => {
-    localStorage.removeItem("skillsync_chatbot_history");
-    localStorage.removeItem("skillsync_chatbot_session");
-  }, []);
-
   // Session ID: persisted per logged-in user, regenerated (in-memory only,
   // never stored) for guests on every mount.
   const [sessionId, setSessionId] = useState(() => {
@@ -165,7 +159,10 @@ export function ChatbotWidget() {
     // Add user message to history
     setMessages((prev) => {
       const updated = [...prev, newUserMessage];
-      return updated.slice(-50); // Keep last 50
+      if (updated.length > 50) {
+        updated.splice(0, updated.length - 50, { role: "bot" as const, text: "— Older messages were cleared to save memory —" });
+      }
+      return updated;
     });
     
     setInput("");

@@ -18,21 +18,13 @@ const inFlightCache = new LRUCache<string, Promise<any>>({
 export async function singleFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
   let promise = inFlightCache.get(key);
 
-  if (promise) {
-    // console.log(`[SingleFlight] Cache HIT for key: ${key}`);
-    return promise;
-  }
+  if (promise) return promise;
 
-  // console.log(`[SingleFlight] Cache MISS for key: ${key} - initiating new request.`);
-  promise = fn();
+  promise = fn().then(
+    (result) => { inFlightCache.delete(key); return result; },
+    (err) => { inFlightCache.delete(key); throw err; }
+  );
   inFlightCache.set(key, promise);
-
-  // Remove the promise from cache once it settles (either resolves or rejects)
-  // This prevents stale promises from being returned if the underlying operation fails
-  // and needs to be retried on subsequent calls.
-  promise.finally(() => {
-    inFlightCache.delete(key);
-  });
 
   return promise;
 }

@@ -62,12 +62,35 @@ export interface DataQuality {
   generatedAt: string;
 }
 
+export interface MentorReportRecommendation {
+  fieldName: string;
+  whyBestFit: string;
+  realMarketDemand: string;
+  estimatedSalary: string;
+  confidenceScore: number;
+  assessmentAlignment: string;
+}
+
+export interface MentorReport {
+  summary: string;
+  topRecommendation: MentorReportRecommendation;
+  allRecommendations: MentorReportRecommendation[];
+  skillGapAnalysis: {
+    skillsYouAlreadyHave: string[];
+    criticalSkillsToLearn: string[];
+    niceToHaveSkills: string[];
+    estimatedLearningWeeks: number;
+  };
+  motivationalMessage: string;
+  immediateNextSteps: string[];
+}
+
 export interface CareerMentorResult {
   success: boolean;
   userId: string;
   topField: string;
   recommendations: EnhancedCareerRecommendation[];
-  mentorReport: any;
+  mentorReport: MentorReport;
   generatedAt: string;
   fromCache: boolean;
   dataQuality: DataQuality;

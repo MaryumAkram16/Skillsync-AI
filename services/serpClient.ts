@@ -1,4 +1,5 @@
 import { singleFlight } from "./singleFlight";
+import { log } from "../logger";
 
 /**
  * serpClient.ts
@@ -7,6 +8,7 @@ import { singleFlight } from "./singleFlight";
  *  - Automatic key rotation across primary and fallback keys.
  *  - In-memory rate-limit tracking to avoid hitting 429s unnecessarily.
  *  - Deduplication of identical in-flight requests via singleFlight.
+ *  - Circuit breaker: backs off all keys when repeated failures occur.
  */
 
 const KEYS = [
@@ -24,18 +26,31 @@ KEYS.forEach(key => {
 // Rate limit cooldown (1 hour)
 const RATE_LIMIT_COOLDOWN = 60 * 60 * 1000;
 
+// Circuit breaker: stop calling SerpAPI entirely after repeated failures
+let consecutiveFailures = 0;
+let circuitOpenUntil = 0;
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+const CIRCUIT_BREAKER_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
 function getAvailableKey(): string | null {
   const now = Date.now();
-  
-  // Reset rate limit status if cooldown has passed
+
+  if (now < circuitOpenUntil) {
+    return null;
+  }
+  if (circuitOpenUntil > 0 && now >= circuitOpenUntil) {
+    circuitOpenUntil = 0;
+    consecutiveFailures = 0;
+    log.info("SerpClient circuit breaker reset");
+  }
+
   for (const key of KEYS) {
     if (KEY_STATUS[key].isRateLimited && (now - KEY_STATUS[key].lastUsed > RATE_LIMIT_COOLDOWN)) {
       KEY_STATUS[key].isRateLimited = false;
-      console.log(`[SerpClient] Resetting rate limit for key: ...${key.slice(-4)}`);
+      log.info("SerpClient key rate limit reset", { key: `...${key.slice(-4)}` });
     }
   }
 
-  // Find the first key that isn't rate limited
   const key = KEYS.find(k => !KEY_STATUS[k].isRateLimited);
   if (key) {
     KEY_STATUS[key].lastUsed = now;
@@ -43,6 +58,18 @@ function getAvailableKey(): string | null {
   }
 
   return null;
+}
+
+function recordSuccess() {
+  consecutiveFailures = 0;
+}
+
+function recordFailure() {
+  consecutiveFailures++;
+  if (consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitOpenUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN;
+    log.warn("SerpClient circuit breaker OPEN", { cooldownMs: CIRCUIT_BREAKER_COOLDOWN });
+  }
 }
 
 export interface SerpResult {
@@ -57,7 +84,7 @@ export async function searchSerp(query: string, num = 8): Promise<SerpResult[]> 
   return singleFlight(`serp-search-${query}`, async () => {
     const key = getAvailableKey();
     if (!key) {
-      console.warn("[SerpClient] No available keys (all rate limited).");
+      log.warn("SerpClient: no available keys");
       return [];
     }
 
@@ -72,23 +99,24 @@ export async function searchSerp(query: string, num = 8): Promise<SerpResult[]> 
       });
 
       const res = await fetch(`https://serpapi.com/search?${params}`);
-      
+
       if (res.status === 429) {
-        console.warn(`[SerpClient] Key ...${key.slice(-4)} rate limited (429)`);
+        log.warn("SerpClient key rate limited", { key: `...${key.slice(-4)}` });
         KEY_STATUS[key].isRateLimited = true;
         KEY_STATUS[key].lastUsed = Date.now();
-        // Try again with a different key
+        recordFailure();
         return searchSerp(query, num);
       }
 
       if (!res.ok) {
-        console.warn(`[SerpClient] Key ...${key.slice(-4)} error: ${res.status}`);
+        log.warn("SerpClient key error", { key: `...${key.slice(-4)}`, status: res.status });
+        recordFailure();
         return [];
       }
 
       const data = await res.json();
-      
-      // Handle organic results
+      recordSuccess();
+
       const organic = (data.organic_results ?? [])
         .slice(0, num)
         .map((r: any) => ({
@@ -99,7 +127,6 @@ export async function searchSerp(query: string, num = 8): Promise<SerpResult[]> 
           date: r.date ?? "",
         }));
 
-      // If it's a salary query, we might want answer_box or knowledge_graph
       if (query.toLowerCase().includes("salary")) {
         const extra: any[] = [];
         if (data.answer_box) {
@@ -123,7 +150,8 @@ export async function searchSerp(query: string, num = 8): Promise<SerpResult[]> 
 
       return organic.filter((r: SerpResult) => r.url && r.title);
     } catch (e: any) {
-      console.error(`[SerpClient] Search failed:`, e.message);
+      log.error("SerpClient search failed", { error: e.message });
+      recordFailure();
       return [];
     }
   });

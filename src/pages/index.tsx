@@ -192,12 +192,12 @@ const faqs = [
 function RadarSignature() {
   const ringRadii = [60, 100, 140];
   const blips = [
-    { x: 38, cy: -22, color: "var(--primary-cyan-light)", delay: 0 },
-    { x: -55, cy: 40, color: "var(--primary-cyan-light)", delay: 0.6 },
-    { x: 90, cy: 55, color: "var(--primary-cyan-light)", delay: 1.2 },
-    { x: -20, cy: -88, color: "var(--primary-violet-light)", delay: 0.3 },
-    { x: -100, cy: -30, color: "var(--primary-violet-light)", delay: 0.9 },
-    { x: 15, cy: 110, color: "var(--primary-violet-light)", delay: 1.5 },
+    { x: 38, cy: -22, color: "var(--primary-cyan-light, #67e8f9)", delay: 0 },
+    { x: -55, cy: 40, color: "var(--primary-cyan-light, #67e8f9)", delay: 0.6 },
+    { x: 90, cy: 55, color: "var(--primary-cyan-light, #67e8f9)", delay: 1.2 },
+    { x: -20, cy: -88, color: "var(--primary-violet-light, #c084fc)", delay: 0.3 },
+    { x: -100, cy: -30, color: "var(--primary-violet-light, #c084fc)", delay: 0.9 },
+    { x: 15, cy: 110, color: "var(--primary-violet-light, #c084fc)", delay: 1.5 },
   ];
 
   return (
