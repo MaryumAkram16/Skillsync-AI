@@ -7,6 +7,7 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { api } from "../utils/api";
 import { cn } from "../utils/cn";
+import { storage } from "../services/storage";
 
 interface Message {
   role: "user" | "bot";
@@ -24,7 +25,7 @@ export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(() => {
     if (typeof window !== "undefined") {
-      const dismissed = localStorage.getItem("skillsync_chatbot_dismissed");
+      const dismissed = storage.get("skillsync_chatbot_dismissed");
       // Only show if not dismissed AND not currently on landing page (optional nuance)
       return dismissed !== "true";
     }
@@ -37,7 +38,7 @@ export function ChatbotWidget() {
   // Robust persistence check — ensures preview doesn't pop back if dismissed
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const dismissed = localStorage.getItem("skillsync_chatbot_dismissed");
+      const dismissed = storage.get("skillsync_chatbot_dismissed");
       if (dismissed === "true" && showPreview) {
         setShowPreview(false);
       }
@@ -48,7 +49,7 @@ export function ChatbotWidget() {
     const handleOpenChatbot = () => {
       setIsOpen(true);
       setShowPreview(false);
-      localStorage.setItem("skillsync_chatbot_dismissed", "true");
+      storage.set("skillsync_chatbot_dismissed", "true");
     };
     window.addEventListener("open-chatbot", handleOpenChatbot);
     return () => window.removeEventListener("open-chatbot", handleOpenChatbot);
@@ -69,23 +70,19 @@ export function ChatbotWidget() {
   // never stored) for guests on every mount.
   const [sessionId, setSessionId] = useState(() => {
     if (sessionKey) {
-      const existing = localStorage.getItem(sessionKey);
+      const existing = storage.getDynamic(sessionKey);
       if (existing) return existing;
     }
     const newId = `session_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-    if (sessionKey) localStorage.setItem(sessionKey, newId);
+    if (sessionKey) storage.setDynamic(sessionKey, newId);
     return newId;
   });
 
   const [messages, setMessages] = useState<Message[]>(() => {
     if (historyKey) {
-      const saved = localStorage.getItem(historyKey);
+      const saved = storage.getDynamic<Message[]>(historyKey);
       if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          console.error("Failed to parse chatbot history", e);
-        }
+        return saved;
       }
     }
     return [DEFAULT_MESSAGE];
@@ -102,19 +99,11 @@ export function ChatbotWidget() {
 
     if (currentUid) {
       // Just signed in (or switched accounts) — load that user's own history.
-      const saved = localStorage.getItem(`skillsync_chatbot_history_${currentUid}`);
-      if (saved) {
-        try {
-          setMessages(JSON.parse(saved));
-        } catch {
-          setMessages([DEFAULT_MESSAGE]);
-        }
-      } else {
-        setMessages([DEFAULT_MESSAGE]);
-      }
-      const existingSession = localStorage.getItem(`skillsync_chatbot_session_${currentUid}`);
+      const saved = storage.getDynamic<Message[]>(`skillsync_chatbot_history_${currentUid}`);
+      setMessages(saved ?? [DEFAULT_MESSAGE]);
+      const existingSession = storage.getDynamic<string>(`skillsync_chatbot_session_${currentUid}`);
       const newSession = existingSession || `session_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-      if (!existingSession) localStorage.setItem(`skillsync_chatbot_session_${currentUid}`, newSession);
+      if (!existingSession) storage.setDynamic(`skillsync_chatbot_session_${currentUid}`, newSession);
       setSessionId(newSession);
     } else {
       // Signed out — never carry the previous user's (or guest's) messages over.
@@ -127,7 +116,7 @@ export function ChatbotWidget() {
   // conversations stay in memory only and vanish when they leave/refresh.
   useEffect(() => {
     if (historyKey) {
-      localStorage.setItem(historyKey, JSON.stringify(messages));
+      storage.setDynamic(historyKey, messages);
     }
 
     // Trigger an event so the dashboard can pick it up
@@ -146,7 +135,7 @@ export function ChatbotWidget() {
   const handleClearHistory = () => {
     setMessages([DEFAULT_MESSAGE]);
     if (historyKey) {
-      localStorage.removeItem(historyKey);
+      storage.removeDynamic(historyKey);
     }
   };
 
@@ -390,7 +379,7 @@ export function ChatbotWidget() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {!isOpen && showPreview && (
+        {!isOpen && showPreview && pathname !== "/skill-assessment" && (
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ 
@@ -410,14 +399,14 @@ export function ChatbotWidget() {
             onClick={() => {
               setIsOpen(true);
               setShowPreview(false);
-              localStorage.setItem("skillsync_chatbot_dismissed", "true");
+              storage.set("skillsync_chatbot_dismissed", "true");
             }}
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreview(false);
-                localStorage.setItem("skillsync_chatbot_dismissed", "true");
+                storage.set("skillsync_chatbot_dismissed", "true");
               }}
               className="absolute top-2 right-2 p-1 text-text-secondary hover:bg-border/50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
             >
@@ -458,7 +447,7 @@ export function ChatbotWidget() {
           onClick={() => {
             setIsOpen(!isOpen);
             setShowPreview(false);
-            localStorage.setItem("skillsync_chatbot_dismissed", "true");
+            storage.set("skillsync_chatbot_dismissed", "true");
           }}
           className="h-16 w-16 rounded-full bg-primary-blue shadow-lg hover:scale-110 transition-all flex items-center justify-center cursor-pointer"
         >

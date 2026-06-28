@@ -70,6 +70,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    if (!onboardingComplete) {
+      const viewKey = `skillsync_onboarding_views_${user.uid}`;
+      const prev = parseInt(localStorage.getItem(viewKey) || "0", 10);
+      localStorage.setItem(viewKey, String(prev + 1));
+    }
     const saved = (user as any).actionItems;
     if (saved && Array.isArray(saved) && saved.length > 0) {
       setTasks(saved);
@@ -319,7 +324,41 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ── ONBOARDING FLOW — shown until all 3 steps complete ───────────────── */}
-      {!onboardingComplete && (
+      {!onboardingComplete && (() => {
+        const viewKey = `skillsync_onboarding_views_${user.uid}`;
+        const viewCount = parseInt(localStorage.getItem(viewKey) || "0", 10);
+        const showCompact = viewCount >= 2;
+        const activeStep = currentStep ? ONBOARDING_STEPS[currentStep - 1] : null;
+
+        if (showCompact && activeStep) {
+          const StepIcon = activeStep.icon;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10 no-print"
+            >
+              <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-accent/30 bg-gradient-to-r from-accent/5 to-primary-blue/5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-accent/10 rounded-xl">
+                    <StepIcon className="h-4 w-4 text-accent" />
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-text-body/60">Step {activeStep.step} of 3</p>
+                    <p className="text-sm font-bold text-text-heading">{activeStep.title}</p>
+                  </div>
+                </div>
+                <Link to={activeStep.path}>
+                  <Button className="bg-accent hover:bg-accent/90 text-text-heading font-black uppercase text-[10px] tracking-widest px-5 h-9 rounded-xl shadow-lg shadow-accent/20">
+                    {activeStep.cta} <ArrowRight className="h-3 w-3 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+          );
+        }
+
+        return (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -418,7 +457,8 @@ export default function Dashboard() {
             </div>
           </Card>
         </motion.div>
-      )}
+        );
+      })()}
 
       {/* ── TOP STATS GRID — now 3 columns ───────────────────────────────────── */}
       <div className="grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-3 mb-10">

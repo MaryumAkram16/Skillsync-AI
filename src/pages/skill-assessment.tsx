@@ -981,7 +981,7 @@ export default function SkillAssessmentPage() {
               </Card>
 
               {/* Navigation */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-24">
                 <Button variant="outline" onClick={handleBack} disabled={currentIdx === 0} className="w-full sm:w-auto px-8">
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
@@ -1187,6 +1187,7 @@ export default function SkillAssessmentPage() {
                           bg: "bg-primary-blue/10",
                           icon: <Target className="h-5 w-5" />,
                           label: key,
+                          description: "",
                         };
                         return (
                           <div key={key} className="p-4 rounded-xl border border-border hover:border-primary-blue/30 transition-all">
@@ -1194,7 +1195,8 @@ export default function SkillAssessmentPage() {
                               <div className={`p-2 rounded-lg ${cfg.bg} ${cfg.color}`}>{cfg.icon}</div>
                               <span className={`text-xl font-bold ${cfg.color}`}>{value}%</span>
                             </div>
-                            <p className="font-medium text-sm mb-2">{cfg.label}</p>
+                            <p className="font-medium text-sm mb-1">{cfg.label}</p>
+                            <p className="text-xs text-text-secondary mb-2">{cfg.description}</p>
                             <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                               <motion.div
                                 className={`h-full ${cfg.bg.replace("/10", "")}`}

@@ -114,10 +114,10 @@ export const COUNTRIES = [
   "Nigeria", "South Africa", "Egypt", "Bangladesh", "Philippines",
 ].sort();
 
-export const CATEGORY_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
-  logical_thinking:  { color: "text-primary-blue",   bg: "bg-primary-blue/10",   icon: <Lightbulb className="h-5 w-5" />, label: "Logical Thinking"  },
-  tech_literacy:     { color: "text-primary-purple",  bg: "bg-primary-purple/10", icon: <Cpu className="h-5 w-5" />,       label: "Tech Literacy"     },
-  problem_solving:   { color: "text-success",          bg: "bg-success/10",         icon: <Zap className="h-5 w-5" />,        label: "Problem Solving"   },
-  soft_skills:       { color: "text-warning",          bg: "bg-warning/10",         icon: <Users className="h-5 w-5" />,      label: "Soft Skills"       },
-  career_awareness:  { color: "text-danger",           bg: "bg-danger/10",          icon: <Compass className="h-5 w-5" />,    label: "Career Awareness"  },
+export const CATEGORY_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string; description: string }> = {
+  logical_thinking:  { color: "text-primary-blue",   bg: "bg-primary-blue/10",   icon: <Lightbulb className="h-5 w-5" />, label: "Logical Thinking",  description: "How you reason through structured problems step by step." },
+  tech_literacy:     { color: "text-primary-purple",  bg: "bg-primary-purple/10", icon: <Cpu className="h-5 w-5" />,       label: "Tech Literacy",     description: "Comfort with core technical concepts and tools." },
+  problem_solving:   { color: "text-success",          bg: "bg-success/10",         icon: <Zap className="h-5 w-5" />,        label: "Problem Solving",   description: "Ability to break down and solve unfamiliar challenges." },
+  soft_skills:       { color: "text-warning",          bg: "bg-warning/10",         icon: <Users className="h-5 w-5" />,      label: "Soft Skills",       description: "Communication, collaboration, and workplace judgment." },
+  career_awareness:  { color: "text-danger",           bg: "bg-danger/10",          icon: <Compass className="h-5 w-5" />,    label: "Career Awareness",  description: "How well your answers matched current job-market realities — not a measure of skill, just market knowledge." },
 };
