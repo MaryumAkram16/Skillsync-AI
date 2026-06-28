@@ -5,6 +5,7 @@ import { Input } from "../components/Input";
 import { api } from "../utils/api";
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { storage } from "../services/storage";
 import {
   MessageSquare,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
   trackFeatureStart,
   trackFeatureCompletion
 } from "../services/featureService";
+import { UsageLimitLocked, UsageLimitStrip } from "../components/UsageLimitBanner";
 import {
   Mode,
   Difficulty,
@@ -59,6 +61,11 @@ import {
 export default function InterviewPage() {
   const { user } = useUser();
   const location = useLocation();
+  // ── Usage limit ───────────────────────────────────────────────────────────
+  const usedCount = (user as any)?.metadata?.usageCounts?.interviewPrep ?? 0;
+  const LIMIT = 3;
+  const isLocked = usedCount >= LIMIT;
+
   const [mode, setMode] = useState<Mode>("selection");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,50 +97,38 @@ export default function InterviewPage() {
 
   // Resume handler
   const handleResumeSaved = () => {
-    const saved = localStorage.getItem("skillsync_last_interview");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setRole(parsed.metadata?.role || "");
-        if (parsed.metadata?.mode === "quiz") {
-          setQuizData(parsed.data.quiz);
-          setSelectedOptions(parsed.data.selection || {});
-          setMode("quiz");
-        } else {
-          setOpenQuestions(parsed.data.questions);
-          setMode("questions");
-        }
-        setShowResumeBanner(false);
-      } catch (e) {
-        console.error("Failed to resume saved interview", e);
-        setShowResumeBanner(false);
+    const parsed = storage.get("skillsync_last_interview") as any;
+    if (parsed) {
+      setRole(parsed.metadata?.role || "");
+      if (parsed.metadata?.mode === "quiz") {
+        setQuizData(parsed.data.quiz);
+        setSelectedOptions(parsed.data.selection || {});
+        setMode("quiz");
+      } else {
+        setOpenQuestions(parsed.data.questions);
+        setMode("questions");
       }
+      setShowResumeBanner(false);
     }
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("skillsync_last_interview");
+    const saved = storage.get("skillsync_last_interview") as any;
     const state = location.state as { autoResume?: boolean } | null;
     const shouldAutoResume = state?.autoResume;
 
     if (saved && mode === "selection") {
       if (shouldAutoResume) {
-        try {
-          const parsed = JSON.parse(saved);
-          setRole(parsed.metadata?.role || "");
-          if (parsed.metadata?.mode === "quiz") {
-            setQuizData(parsed.data.quiz);
-            setSelectedOptions(parsed.data.selection || {});
-            setMode("quiz");
-          } else {
-            setOpenQuestions(parsed.data.questions);
-            setMode("questions");
-          }
-          setShowResumeBanner(false);
-        } catch (e) {
-          console.error("Failed to parse saved interview for auto-resume:", e);
-          setShowResumeBanner(true);
+        setRole(saved.metadata?.role || "");
+        if (saved.metadata?.mode === "quiz") {
+          setQuizData(saved.data.quiz);
+          setSelectedOptions(saved.data.selection || {});
+          setMode("quiz");
+        } else {
+          setOpenQuestions(saved.data.questions);
+          setMode("questions");
         }
+        setShowResumeBanner(false);
       } else {
         setShowResumeBanner(true);
       }
@@ -339,7 +334,7 @@ export default function InterviewPage() {
       await saveResultToProfile(user.uid, result);
 
       // Save output to localStorage as requested
-      localStorage.setItem("skillsync_last_interview", JSON.stringify({
+      storage.set("skillsync_last_interview", {
         feature: "interview",
         title: `${mode === "quiz" ? "Quiz" : "Question Prep"}: ${role}`,
         data: mode === "quiz" ? { quiz: quizData, selection: selectedOptions } : { questions: openQuestions },
@@ -349,7 +344,7 @@ export default function InterviewPage() {
           mode
         },
         path: "/interview"
-      }));
+      } as any);
 
       setSaveComplete(true);
       setTimeout(() => setSaveComplete(false), 3000);
@@ -433,7 +428,10 @@ export default function InterviewPage() {
         ) : undefined
       }
     >
+      {isLocked && <UsageLimitLocked feature="Interview Prep" limit={LIMIT} />}
+      {!isLocked && (
       <div className="max-w-5xl mx-auto space-y-6 pb-20 px-4">
+        {usedCount > 0 && mode === "selection" && <UsageLimitStrip used={usedCount} limit={LIMIT} feature="Interview Prep" />}
         {showResumeBanner && mode === "selection" && (
           <div className="bg-warning/10 border border-warning/20 rounded-2xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
             <div className="flex items-center gap-3">
@@ -1364,6 +1362,7 @@ export default function InterviewPage() {
           )}
         </AnimatePresence>
       </div>
+      )}
     </DashboardLayout>
   );
 }

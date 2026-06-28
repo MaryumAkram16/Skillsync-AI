@@ -130,41 +130,21 @@ function validateInputs(role: string, country: string): void {
 
 // ─── Step 2: Fetch jobs from JSearch ─────────────────────────────────────────
 
-async function fetchJobs(
-  role: string,
-  country: string,
-  employmentType: string,
-  locationType: string,
-  candidateYearsExperience: number = 0
+function cleanRole(raw: string): string {
+  return raw.trim().replace(/\bjobs?\b/gi, "").replace(/\s{2,}/g, " ").trim();
+}
+
+async function fetchJobsOnce(
+  queryText: string,
+  datePosted: string,
+  employmentTypes: string,
+  isRemote: string,
+  keys: string[]
 ): Promise<RawJob[]> {
-  const keys = [
-    process.env.RAPIDAPI_KEY, 
-    process.env.RAPID_API_KEY,
-    process.env.RAPIDAPI_KEY_2,
-    process.env.RAPID_API_KEY_2
-  ].filter(Boolean) as string[];
-  if (keys.length === 0) throw new Error("No JSearch API keys configured.");
-
-  // Bias the search itself toward entry-level/internship roles when the
-  // candidate has no detected work experience — otherwise JSearch returns
-  // a generic mix that's mostly mid/senior roles the candidate has no shot at.
-  const isEntryLevel = candidateYearsExperience === 0;
-  const roleQuery = isEntryLevel
-    ? `entry level OR junior OR internship ${role.trim()}`
-    : role.trim();
-  const query = encodeURIComponent(`${roleQuery} in ${country}`);
-  const isRemote = locationType.toLowerCase() === "remote" ? "true" : "false";
-  const employmentTypes = (() => {
-    const et = (employmentType || "Full-time").toUpperCase();
-    if (et === "FULL-TIME") return isEntryLevel ? "FULLTIME,INTERN" : "FULLTIME";
-    if (et === "PART-TIME") return isEntryLevel ? "PARTTIME,INTERN" : "PARTTIME";
-    if (et === "FREELANCE" || et === "CONTRACT") return "CONTRACTOR";
-    return isEntryLevel ? "FULLTIME,PARTTIME,CONTRACTOR,INTERN" : "FULLTIME,PARTTIME,CONTRACTOR";
-  })();
-
+  const query = encodeURIComponent(queryText);
   const url =
     `https://jsearch.p.rapidapi.com/search` +
-    `?query=${query}&num_pages=2&date_posted=month&results_per_page=6` +
+    `?query=${query}&num_pages=2&date_posted=${datePosted}&results_per_page=6` +
     `&job_details=true&remote_jobs_only=${isRemote}&employment_types=${employmentTypes}`;
 
   for (let i = 0; i < keys.length; i++) {
@@ -179,10 +159,11 @@ async function fetchJobs(
       if (res.ok) {
         const json = await res.json();
         const jobs: RawJob[] = json?.data ?? [];
-        if (jobs.length === 0)
-          throw new Error(`No jobs found for "${role}" in "${country}". Try a broader role.`);
-        console.log(`[Parser] JSearch key ${i + 1} returned ${jobs.length} jobs`);
-        return jobs;
+        if (jobs.length > 0) {
+          console.log(`[Parser] JSearch key ${i + 1} returned ${jobs.length} jobs`);
+          return jobs;
+        }
+        return [];
       }
       const status = res.status;
       if ((status === 429 || status === 403) && i < keys.length - 1) {
@@ -195,7 +176,63 @@ async function fetchJobs(
       throw err;
     }
   }
-  throw new Error("Failed to fetch jobs from JSearch.");
+  return [];
+}
+
+async function fetchJobs(
+  role: string,
+  country: string,
+  employmentType: string,
+  locationType: string,
+  candidateYearsExperience: number = 0
+): Promise<RawJob[]> {
+  const keys = [
+    process.env.RAPIDAPI_KEY,
+    process.env.RAPID_API_KEY,
+    process.env.RAPIDAPI_KEY_2,
+    process.env.RAPID_API_KEY_2
+  ].filter(Boolean) as string[];
+  if (keys.length === 0) throw new Error("No JSearch API keys configured.");
+
+  const cleanedRole = cleanRole(role);
+
+  const isEntryLevel = candidateYearsExperience === 0;
+  const roleQuery = isEntryLevel
+    ? `entry level OR junior OR internship ${cleanedRole}`
+    : cleanedRole;
+  const isRemote = locationType.toLowerCase() === "remote" ? "true" : "false";
+  const employmentTypes = (() => {
+    const et = (employmentType || "Full-time").toUpperCase();
+    if (et === "FULL-TIME") return isEntryLevel ? "FULLTIME,INTERN" : "FULLTIME";
+    if (et === "PART-TIME") return isEntryLevel ? "PARTTIME,INTERN" : "PARTTIME";
+    if (et === "FREELANCE" || et === "CONTRACT") return "CONTRACTOR";
+    return isEntryLevel ? "FULLTIME,PARTTIME,CONTRACTOR,INTERN" : "FULLTIME,PARTTIME,CONTRACTOR";
+  })();
+
+  const countryLower = country.toLowerCase();
+  const buildQuery = (c: string) =>
+    c.toLowerCase() === "worldwide" || !c ? roleQuery : `${roleQuery} in ${c}`;
+
+  // Tier 1: date_posted=month, original country
+  const queryT1 = buildQuery(country);
+  console.log(`[Parser] Tier 1: "${queryT1}" date_posted=month`);
+  let jobs = await fetchJobsOnce(queryT1, "month", employmentTypes, isRemote, keys);
+  if (jobs.length > 0) return jobs;
+
+  // Tier 2: date_posted=all, same country
+  console.log(`[Parser] Tier 1 empty — Tier 2: "${queryT1}" date_posted=all`);
+  jobs = await fetchJobsOnce(queryT1, "all", employmentTypes, isRemote, keys);
+  if (jobs.length > 0) return jobs;
+
+  // Tier 3: date_posted=all, Worldwide
+  if (countryLower !== "worldwide") {
+    const queryT3 = roleQuery;
+    console.log(`[Parser] Tier 2 empty — Tier 3: "${queryT3}" date_posted=all (Worldwide)`);
+    jobs = await fetchJobsOnce(queryT3, "all", employmentTypes, isRemote, keys);
+    if (jobs.length > 0) return jobs;
+  }
+
+  throw new Error(`No jobs found for "${cleanedRole}". Try a different or broader job title.`);
 }
 
 // ─── Step 3: Normalize jobs ───────────────────────────────────────────────────

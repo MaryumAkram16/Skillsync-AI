@@ -12,6 +12,7 @@ import { SkillGrowthChart } from "../components/SkillGrowthChart";
 import { ProgressTracker } from "../components/ProgressTracker"; // <-- ADDED
 import { DashboardSkeleton } from "../components/SkeletonLoaders";
 import { exportDashboardPDF } from "../utils/pdfExport";
+import { storage } from "../services/storage";
 
 const DEFAULT_TASKS = [
   { id: "1", text: "Update resume with latest skills", completed: false },
@@ -86,20 +87,18 @@ export default function Dashboard() {
         "skillsync_last_career-mentor",
         "skillsync_last_interview"
       ];
-      let outputs = keys
+      let outputs: any[] = keys
         .map(k => {
           try {
-            const item = localStorage.getItem(k);
-            return item ? JSON.parse(item) : null;
+            return storage.getDynamic(k);
           } catch (e) { return null; }
         })
         .filter(Boolean);
         
       // Add chatbot history if exists with > 1 messages
       try {
-        const chatHistoryStr = localStorage.getItem("skillsync_chatbot_history");
-        if (chatHistoryStr) {
-          const chatHistory = JSON.parse(chatHistoryStr);
+        const chatHistory = storage.getDynamic("skillsync_chatbot_history");
+        if (chatHistory) {
           if (Array.isArray(chatHistory) && chatHistory.length > 1) {
             outputs.push({
               feature: "career-mentor-chat",

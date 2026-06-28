@@ -311,8 +311,8 @@ export default function ResumeToolsPage() {
   if (!isLoggedIn || !user) return null;
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.savedResumeItems?.length ?? 0;
-  const LIMIT = 5;
+  const usedCount = (user as any)?.metadata?.usageCounts?.resumeTools ?? 0;
+  const LIMIT = 3;
   const isLocked = usedCount >= LIMIT;
 
   const handleDragOver = (e: React.DragEvent) => {

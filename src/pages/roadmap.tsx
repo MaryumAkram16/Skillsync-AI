@@ -7,6 +7,7 @@ import { Input } from "../components/Input";
 import { api } from "../utils/api";
 import { useUser } from "../context/UserContext";
 import { cn } from "../utils/cn";
+import { storage } from "../services/storage";
 import {
   Compass,
   Loader2,
@@ -108,7 +109,7 @@ export default function RoadmapPage() {
   const location = useLocation();
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.savedRoadmaps?.length ?? 0;
+  const usedCount = (user as any)?.metadata?.usageCounts?.roadmap ?? 0;
   const LIMIT = 2;
   const isLocked = usedCount >= LIMIT;
 
@@ -185,51 +186,36 @@ export default function RoadmapPage() {
 
   // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("skillsync_last_roadmap");
-    const progress = localStorage.getItem("skillsync_roadmap_progress");
-    
+    const saved = storage.get("skillsync_last_roadmap") as any;
+    const progress = storage.get("skillsync_roadmap_progress");
+
     if (progress) {
-      try {
-        setCompletedTopics(JSON.parse(progress));
-      } catch (e) {
-        console.error("Failed to parse roadmap progress", e);
-      }
+      setCompletedTopics(progress as Record<string, boolean>);
     }
 
     const state = location.state as { autoResume?: boolean } | null;
     const shouldAutoResume = state?.autoResume;
 
     if (saved && !roadmap) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.data) {
-          if (shouldAutoResume) {
-            setRoadmap(parsed.data);
-            setGoal(parsed.title || "");
-            setShowResumeBanner(false);
-          } else {
-            setShowResumeBanner(true);
-          }
+      if (saved?.data) {
+        if (shouldAutoResume) {
+          setRoadmap(saved.data);
+          setGoal(saved.title || "");
+          setShowResumeBanner(false);
+        } else {
+          setShowResumeBanner(true);
         }
-      } catch (e) {
-        console.error("Failed to parse saved roadmap", e);
       }
     }
   }, [roadmap, location.state]);
 
   const handleResumeSaved = () => {
-    const saved = localStorage.getItem("skillsync_last_roadmap");
+    const saved = storage.get("skillsync_last_roadmap") as any;
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setRoadmap(parsed.data);
-        setGoal(parsed.title || "");
-        setShowResumeBanner(false);
-        setToast({ message: "Loaded saved roadmap", tone: "success" });
-      } catch (e) {
-        console.error("Failed to resume saved roadmap", e);
-        setShowResumeBanner(false);
-      }
+      setRoadmap(saved.data);
+      setGoal(saved.title || "");
+      setShowResumeBanner(false);
+      setToast({ message: "Loaded saved roadmap", tone: "success" });
     }
   };
 
@@ -270,7 +256,7 @@ export default function RoadmapPage() {
   }, [goal, roadmap]);
 
   const handleGenerateNew = () => {
-    localStorage.removeItem("skillsync_last_roadmap");
+    storage.remove("skillsync_last_roadmap");
     setRoadmap(null);
     setShowResumeBanner(false);
   };
@@ -339,13 +325,13 @@ export default function RoadmapPage() {
       setStatusMessage(null);
 
       // Save output to localStorage as requested
-      localStorage.setItem("skillsync_last_roadmap", JSON.stringify({
+      storage.set("skillsync_last_roadmap", {
         feature: "roadmap",
         title: cleanGoal,
         data: normalized,
         timestamp: new Date().toISOString(),
         path: "/roadmap"
-      }));
+      } as any);
 
       // Track feature completion
       await trackFeatureCompletion(
@@ -448,7 +434,7 @@ export default function RoadmapPage() {
     };
     
     setCompletedTopics(nextCompleted);
-    localStorage.setItem('skillsync_roadmap_progress', JSON.stringify(nextCompleted));
+    storage.set('skillsync_roadmap_progress', nextCompleted);
 
     // Only show milestones when marking as COMPLETE
     if (!completedTopics[key]) {

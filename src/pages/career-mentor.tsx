@@ -6,6 +6,7 @@ import { Input } from "../components/Input";
 import { api } from "../utils/api";
 import { useUser } from "../context/UserContext";
 import { motion, AnimatePresence } from "motion/react";
+import { storage } from "../services/storage";
 import {
   Compass,
   Loader2,
@@ -87,7 +88,7 @@ export default function CareerMentorEnhancedPage() {
   const location = useLocation();
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.savedCareerReports?.length ?? 0;
+  const usedCount = (user as any)?.metadata?.usageCounts?.careerMentor ?? 0;
   const LIMIT = 3;
   const isLocked = usedCount >= LIMIT;
   const [screen, setScreen] = useState<ScreenState>("form");
@@ -104,6 +105,7 @@ export default function CareerMentorEnhancedPage() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPrefilled, setIsPrefilled] = useState(false);
+  const [customEducation, setCustomEducation] = useState("");
   const [assessmentData, setAssessmentData] = useState<any>(null);
   const [selectedRoleIndex, setSelectedRoleIndex] = useState<number | null>(null);
 
@@ -118,18 +120,12 @@ export default function CareerMentorEnhancedPage() {
 
   // Resume handler
   const handleResumeSaved = () => {
-    const saved = localStorage.getItem("skillsync_last_career-mentor");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setRecommendations(parsed.data);
-        setFormData(prev => ({ ...prev, fieldOfStudy: parsed.metadata?.fieldOfStudy || "" }));
-        setScreen("report");
-        setShowResumeBanner(false);
-      } catch (e) {
-        console.error("Failed to resume saved recommendations", e);
-        setShowResumeBanner(false);
-      }
+    const parsed = storage.get("skillsync_last_career-mentor") as any;
+    if (parsed) {
+      setRecommendations(parsed.data);
+      setFormData(prev => ({ ...prev, fieldOfStudy: parsed.metadata?.fieldOfStudy || "" }));
+      setScreen("report");
+      setShowResumeBanner(false);
     }
   };
 
@@ -140,21 +136,14 @@ export default function CareerMentorEnhancedPage() {
     }
 
     // Attempt to load from localStorage first
-    const saved = localStorage.getItem("skillsync_last_career-mentor");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.data && parsed.data.length > 0) {
-          setRecommendations(parsed.data);
-          if (parsed.metadata?.fieldOfStudy) {
-            setFormData(prev => ({ ...prev, fieldOfStudy: parsed.metadata.fieldOfStudy }));
-          }
-          setScreen("report");
-          return;
-        }
-      } catch (e) {
-        console.error("Failed to load saved recommendations from localStorage", e);
+    const parsed = storage.get("skillsync_last_career-mentor") as any;
+    if (parsed?.data?.length > 0) {
+      setRecommendations(parsed.data);
+      if (parsed.metadata?.fieldOfStudy) {
+        setFormData(prev => ({ ...prev, fieldOfStudy: parsed.metadata.fieldOfStudy }));
       }
+      setScreen("report");
+      return;
     }
 
     // As a fallback, check user profile savedCareerReports
@@ -171,7 +160,7 @@ export default function CareerMentorEnhancedPage() {
   }, [user, location.state]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("skillsync_last_career-mentor");
+    const saved = storage.get("skillsync_last_career-mentor");
     if (saved && screen === "form") {
       setShowResumeBanner(true);
     }
@@ -201,9 +190,7 @@ export default function CareerMentorEnhancedPage() {
       return;
     }
 
-    const history = JSON.parse(
-      localStorage.getItem("skillSyncAssessments") || "[]"
-    );
+    const history = (storage.get("skillSyncAssessments") || []) as any[];
     if (history && history.length > 0) {
       const latest = history[0];
       setAssessmentData(latest);
@@ -245,8 +232,10 @@ export default function CareerMentorEnhancedPage() {
     }, 2000);
 
     try {
+      const effectiveEducation = formData.educationLevel === "Other" ? (customEducation || "Other") : formData.educationLevel;
       const response = await api.getCareerMentorReport(user.uid, {
         ...formData,
+        educationLevel: effectiveEducation,
         assessmentData: assessmentData,
       });
 
@@ -341,7 +330,7 @@ export default function CareerMentorEnhancedPage() {
       await saveResultToProfile(user.uid, profileResult);
 
       // Save output to localStorage as requested
-      localStorage.setItem("skillsync_last_career-mentor", JSON.stringify({
+      storage.set("skillsync_last_career-mentor", {
         feature: "career-mentor",
         title: `Career Recommendations for ${formData.fieldOfStudy}`,
         data: finalRecs,
@@ -350,7 +339,7 @@ export default function CareerMentorEnhancedPage() {
           fieldOfStudy: formData.fieldOfStudy
         },
         path: "/career-mentor"
-      }));
+      } as any);
 
       setScreen("report");
     } catch (err: any) {
@@ -787,7 +776,18 @@ export default function CareerMentorEnhancedPage() {
                         <option value="PhD">PhD</option>
                         <option value="Bootcamp">Bootcamp / Online Course</option>
                         <option value="Self-taught">Self-taught</option>
+                        <option value="Other">Other</option>
                       </select>
+                      {formData.educationLevel === "Other" && (
+                        <input
+                          type="text"
+                          className="mt-2 w-full bg-bg-primary border border-border rounded-2xl p-4 text-text-heading focus:ring-2 focus:ring-accent outline-none transition-all font-bold"
+                          placeholder="e.g. DAE, O-Levels, A-Levels…"
+                          value={customEducation}
+                          onChange={(e) => setCustomEducation(e.target.value)}
+                          required
+                        />
+                      )}
                     </div>
 
                     {/* Fix 5: Experience level */}

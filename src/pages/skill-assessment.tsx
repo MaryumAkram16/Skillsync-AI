@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { api } from "../utils/api";
 import { useUser } from "../context/UserContext";
 import { motion, AnimatePresence } from "motion/react";
+import { storage } from "../services/storage";
 import {
   CheckCircle2,
   ArrowRight,
@@ -115,6 +116,8 @@ export default function SkillAssessmentPage() {
   const [interests, setInterests]         = useState<InterestItem[]>([]);
   const [country, setCountry]             = useState("");
   const [education, setEducation]         = useState("");
+  const [customEducation, setCustomEducation] = useState("");
+  const effectiveEducation = education === "Other" ? (customEducation || "Other") : education;
   const [subject, setSubject]             = useState("");
   const [customSkillInput, setCustomSkillInput] = useState("");
   const [expandedCategory, setExpandedCategory] = useState<string | null>("Technical Skills");
@@ -124,17 +127,11 @@ export default function SkillAssessmentPage() {
 
   // Resume handler
   const handleResumeSaved = () => {
-    const saved = localStorage.getItem("skillsync_last_skill-assessment");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setResults(parsed.data);
-        setScreen("results");
-        setShowResumeBanner(false);
-      } catch (e) {
-        console.error("Failed to resume saved assessment", e);
-        setShowResumeBanner(false);
-      }
+    const parsed = storage.get("skillsync_last_skill-assessment") as any;
+    if (parsed) {
+      setResults(parsed.data);
+      setScreen("results");
+      setShowResumeBanner(false);
     }
   };
 
@@ -144,21 +141,15 @@ export default function SkillAssessmentPage() {
     api.verifyDatabase().then(setDbStatus);
 
     // Check for saved assessment
-    const saved = localStorage.getItem("skillsync_last_skill-assessment");
+    const saved = storage.get("skillsync_last_skill-assessment") as any;
     const state = location.state as { autoResume?: boolean } | null;
     const shouldAutoResume = state?.autoResume;
 
     if (saved && screen === "welcome") {
       if (shouldAutoResume) {
-        try {
-          const parsed = JSON.parse(saved);
-          setResults(parsed.data);
-          setScreen("results");
-          setShowResumeBanner(false);
-        } catch (e) {
-          console.error("Failed to parse saved assessment for auto-resume", e);
-          setShowResumeBanner(true);
-        }
+        setResults(saved.data);
+        setScreen("results");
+        setShowResumeBanner(false);
       } else {
         setShowResumeBanner(true);
       }
@@ -254,7 +245,7 @@ export default function SkillAssessmentPage() {
       const data = await api.generateAssessmentStage1(
         user.uid,
         interests as any,
-        `${education} in ${subject}`,
+        `${effectiveEducation} in ${subject}`,
         country
       );
       setQuiz(data.quiz || []);
@@ -364,7 +355,7 @@ export default function SkillAssessmentPage() {
         data: {
           ...normalised,
           interests: interests.map(i => i.name),
-          education,
+          education: effectiveEducation,
           subject,
           country
         }
@@ -373,13 +364,13 @@ export default function SkillAssessmentPage() {
       await saveResultToProfile(user.uid, profileResult);
 
       // Save output to localStorage as requested
-      localStorage.setItem("skillsync_last_skill-assessment", JSON.stringify({
+      storage.set("skillsync_last_skill-assessment", {
         feature: "skill-assessment",
         title: `${subject || 'General'} Assessment`,
         data: normalised,
         timestamp: new Date().toISOString(),
         path: "/skill-assessment"
-      }));
+      } as any);
 
       // Save skills to profile
       const allNewSkills = [
@@ -570,7 +561,17 @@ export default function SkillAssessmentPage() {
                           <option value="Bachelor's">Bachelor's Degree</option>
                           <option value="Master's">Master's Degree</option>
                           <option value="PhD">PhD</option>
+                          <option value="Other">Other</option>
                         </select>
+                        {education === "Other" && (
+                          <input
+                            type="text"
+                            className="mt-2 w-full bg-background border border-border rounded-lg p-3 text-text-primary focus:ring-2 focus:ring-primary-blue outline-none transition-all text-sm"
+                            placeholder="Describe your education (e.g. vocational diploma, license)"
+                            value={customEducation}
+                            onChange={(e) => setCustomEducation(e.target.value)}
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -1261,7 +1262,7 @@ export default function SkillAssessmentPage() {
                     navigate("/career-mentor", {
                       state: {
                         prefill: {
-                          education,
+                          education: effectiveEducation,
                           subject,
                           skills: interests.map((i) => i.name),
                           country,

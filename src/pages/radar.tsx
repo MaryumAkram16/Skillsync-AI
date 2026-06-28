@@ -8,6 +8,7 @@ import { JobCard } from "../components/JobCard";
 import { useUser } from "../context/UserContext";
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { storage } from "../services/storage";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../utils/api";
 import { saveResultToProfile } from "../services/profileService";
@@ -27,7 +28,7 @@ export default function RadarPage() {
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.savedRadarAnalyses?.length ?? 0;
+  const usedCount = (user as any)?.metadata?.usageCounts?.radar ?? 0;
   const LIMIT = 5;
   const isLocked = usedCount >= LIMIT;
   const [role, setRole] = useState("Frontend Developer");
@@ -124,10 +125,26 @@ export default function RadarPage() {
 
   // Resume handler
   const handleResumeSaved = () => {
-    const saved = localStorage.getItem("skillsync_last_radar");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+    const parsed = storage.get("skillsync_last_radar") as any;
+    if (parsed) {
+      setRole(parsed.data.role);
+      setCountry(parsed.data.country);
+      setStructuredData(parsed.data.structuredData);
+      setSalary(parsed.data.salary);
+      setJobs(parsed.data.jobs || []);
+      setHasLoadedRadar(true);
+      setShowResumeBanner(false);
+    }
+  };
+
+  useEffect(() => {
+    const saved = storage.get("skillsync_last_radar");
+    const state = location.state as { autoResume?: boolean } | null;
+    const shouldAutoResume = state?.autoResume;
+
+    if (saved && !hasLoadedRadar) {
+      if (shouldAutoResume) {
+        const parsed = saved as any;
         setRole(parsed.data.role);
         setCountry(parsed.data.country);
         setStructuredData(parsed.data.structuredData);
@@ -135,33 +152,6 @@ export default function RadarPage() {
         setJobs(parsed.data.jobs || []);
         setHasLoadedRadar(true);
         setShowResumeBanner(false);
-      } catch (e) {
-        console.error("Failed to resume saved radar", e);
-        setShowResumeBanner(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const saved = localStorage.getItem("skillsync_last_radar");
-    const state = location.state as { autoResume?: boolean } | null;
-    const shouldAutoResume = state?.autoResume;
-
-    if (saved && !hasLoadedRadar) {
-      if (shouldAutoResume) {
-        try {
-          const parsed = JSON.parse(saved);
-          setRole(parsed.data.role);
-          setCountry(parsed.data.country);
-          setStructuredData(parsed.data.structuredData);
-          setSalary(parsed.data.salary);
-          setJobs(parsed.data.jobs || []);
-          setHasLoadedRadar(true);
-          setShowResumeBanner(false);
-        } catch (e) {
-          console.error("Failed to parse saved radar for auto-resume:", e);
-          setShowResumeBanner(true);
-        }
       } else {
         setShowResumeBanner(true);
       }
@@ -335,7 +325,7 @@ export default function RadarPage() {
           await saveResultToProfile(user.uid, profileResult);
 
           // Save output to localStorage as requested
-          localStorage.setItem("skillsync_last_radar", JSON.stringify({
+          storage.set("skillsync_last_radar", {
             feature: "radar",
             title: `Trend Analysis: ${role}`,
             data: {
@@ -347,7 +337,7 @@ export default function RadarPage() {
             },
             timestamp: new Date().toISOString(),
             path: "/radar"
-          }));
+          } as any);
 
           // Track feature completion
           await trackFeatureCompletion(
@@ -544,8 +534,14 @@ export default function RadarPage() {
                   <AlertTriangle className="h-6 w-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-display text-lg font-semibold text-danger mb-2">Market Analysis Failed</h3>
-                  <p className="text-text-primary mb-4 font-medium">{error}</p>
+                  <h3 className="font-display text-lg font-semibold text-danger mb-2">
+                    {error.toLowerCase().includes("no jobs found") ? "No Matching Results" : "Market Analysis Failed"}
+                  </h3>
+                  <p className="text-text-primary mb-4 font-medium">
+                    {error.toLowerCase().includes("no jobs found")
+                      ? "We couldn't find live job postings for this role. Try a broader title, a different country, or check back later."
+                      : error}
+                  </p>
                   
                   <div className="bg-background rounded-md p-4 border border-border">
                     <h4 className="font-semibold text-sm mb-2 text-text-primary">Troubleshooting Steps:</h4>

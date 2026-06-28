@@ -19,6 +19,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "firebase-admin";
 import { FirestoreRateLimitStore, selectRateLimitKey } from "./firestoreRateLimitStore";
 import { scanMarket } from "./services/radarService";
+import { checkAndIncrementUsage, UsageLimitError } from "./services/usageLimits";
 import { extractResumeDetails } from "./services/resumeExtractor";
 import { parseResumeAndFindJobs } from "./services/parserService";
 import { askChatbot } from "./services/chatbotService";
@@ -236,11 +237,15 @@ async function startServer() {
         return res.status(400).json({ error: "Missing required fields: resumeText, jobDescription, mode" });
       }
 
+      await checkAndIncrementUsage(userId, "resumeTools");
       log.info("ResumeTools processing", { mode, userId });
 
       const result = await processResumeTools(resumeText, jobDescription, mode, jobTitle, company, tone, userName);
       res.json(result);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Resume tools route error", { error: error.message });
       res.status(500).json({ error: "Failed to process resume", message: error.message });
     }
@@ -249,12 +254,17 @@ async function startServer() {
   app.post("/api/trending-skills", requireAuth, mediumLimiter, async (req, res) => {
     try {
       const { role, country } = req.body;
+      const userId = (req as any).verifiedUid;
+      await checkAndIncrementUsage(userId, "radar");
       log.info("Radar scanMarket", { role, country });
       const data = await scanMarket(role, country);
       res.json(data);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Trending skills route error", { error: error.message });
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch market data",
         message: error.message || "Unknown error"
       });
@@ -284,24 +294,32 @@ async function startServer() {
     res.setTimeout(300000);
 
     try {
-      const { resumeText, role, country, employmentType = "Full-time", locationType = "Remote" } = req.body;
+      const { resumeText, role, country, employmentType = "Full-time", locationType = "Remote", city } = req.body;
       const userId = (req as any).verifiedUid;
       if (!resumeText) throw new Error("resumeText is required");
       if (!role) throw new Error("role is required");
 
-      log.info("ParserService parseResumeAndFindJobs", { role, country, employmentType, locationType });
+      await checkAndIncrementUsage(userId, "parser");
+
+      const effectiveCountry = country || "Worldwide";
+      const location = city ? `${city}, ${effectiveCountry}` : effectiveCountry;
+
+      log.info("ParserService parseResumeAndFindJobs", { role, country: location, employmentType, locationType });
       const data = await parseResumeAndFindJobs(
         userId,
         resumeText,
         role,
-        country || "Worldwide",
+        location,
         employmentType,
         locationType
       );
       res.json(data);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Parse resume route error", { error: error.message });
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to parse resume",
         message: error.message || "Unknown error"
       });
@@ -311,10 +329,17 @@ async function startServer() {
   app.post("/api/supabase/:function", requireAuth, lightLimiter, async (req, res) => {
     try {
       const func = req.params.function;
+      const userId = (req as any).verifiedUid;
+      if (func === "generate-interview") {
+        await checkAndIncrementUsage(userId, "interviewPrep");
+      }
       const url = `https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/${func}`;
-      const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
+      const data = await callSupabaseService(url, { ...req.body, userId });
       res.json(data);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Supabase function error", { function: req.params.function, error: error.message });
       res.status(500).json({ error: `Failed to call Supabase feature: ${req.params.function}`, message: error.message });
     }
@@ -322,10 +347,15 @@ async function startServer() {
 
   app.post("/api/generate-roadmap", requireAuth, heavyLimiter, async (req, res) => {
     try {
+      const userId = (req as any).verifiedUid;
+      await checkAndIncrementUsage(userId, "roadmap");
       const url = "https://ctkwpwpprnxgytifimzh.supabase.co/functions/v1/generate-roadmap";
-      const data = await callSupabaseService(url, { ...req.body, userId: (req as any).verifiedUid });
+      const data = await callSupabaseService(url, { ...req.body, userId });
       res.json(data);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Generate roadmap error", { error: error.message });
       res.status(500).json({ error: "Failed to generate roadmap", message: error.message });
     }
@@ -854,12 +884,16 @@ Rules:
       const { ...formData } = req.body;
       const userId = (req as any).verifiedUid;
 
+      await checkAndIncrementUsage(userId, "careerMentor");
       log.info("CareerMentor generating recommendations", { userId });
       const data = await getCareerMentorRecommendations(userId, formData);
       res.json(data);
     } catch (error: any) {
+      if (error instanceof UsageLimitError) {
+        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
+      }
       log.error("Error fetching career mentor report", { error: error.message });
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to get career mentor report",
         message: error.message || "Unknown error"
       });

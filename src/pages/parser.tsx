@@ -8,6 +8,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useUser } from "../context/UserContext";
 import { api } from "../utils/api";
+import { storage } from "../services/storage";
 import { extractTextFromFile } from "../utils/fileExtractor";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { gapDataService } from "../services/gapDataService";
@@ -15,10 +16,11 @@ import { saveResultToProfile } from "../services/profileService";
 import { SAMPLE_PROFILES } from "../data/sampleProfiles";
 import ResumeConsentModal, { hasResumeConsent } from "../components/ResumeConsentModal";
 import { GapAnalysisResult } from "../types/profile";
-import { 
-  trackFeatureStart, 
-  trackFeatureCompletion 
+import {
+  trackFeatureStart,
+  trackFeatureCompletion
 } from "../services/featureService";
+import { UsageLimitLocked, UsageLimitStrip } from "../components/UsageLimitBanner";
 
 export default function ParserPage() {
   const { user, isLoggedIn, updateProfile } = useUser();
@@ -26,6 +28,12 @@ export default function ParserPage() {
   const [searchParams] = useSearchParams();
   
   if (!isLoggedIn || !user) return null;
+
+  // ── Usage limit ───────────────────────────────────────────────────────────
+  const usedCount = (user as any)?.metadata?.usageCounts?.parser ?? 0;
+  const LIMIT = 3;
+  const isLocked = usedCount >= LIMIT;
+
   const [tab, setTab] = useState<"upload" | "manual">(
     searchParams.get("mode") === "manual" ? "manual" : "upload"
   );
@@ -48,6 +56,7 @@ export default function ParserPage() {
 
   const [role, setRole] = useState(searchParams.get("role") || "Frontend Developer");
   const [country, setCountry] = useState("Worldwide");
+  const [city, setCity] = useState("");
   const [employmentType, setEmploymentType] = useState("Full-time");
   const [locationType, setLocationType] = useState("Remote");
   
@@ -316,7 +325,7 @@ Summary: ${summary}`;
       setParseStatus("Analyzing skills and matching jobs...");
       
       // 2. Call API
-      const response = await api.parseResume(user.uid, resumeText, role, country, employmentType, locationType);
+      const response = await api.parseResume(user.uid, resumeText, role, country, employmentType, locationType, city.trim() || undefined);
       
       setParseProgress(80);
       setParseStatus("Processing results...");
@@ -362,7 +371,7 @@ Summary: ${summary}`;
         finalResponse = merged;
       }
 
-      localStorage.removeItem("skillsync_data");
+      storage.remove("skillsync_data");
       await gapDataService.saveGapData(user.uid, finalResponse);
 
       // Save Gap Analysis to profile
@@ -500,6 +509,20 @@ Summary: ${summary}`;
       };
     }
 
+    if (errorLower.includes("no jobs found")) {
+      return {
+        type: "No Matching Jobs",
+        icon: <Briefcase className="h-5 w-5" />,
+        description: "We couldn't find live job postings matching this exact search.",
+        tips: [
+          "Try a broader or more common job title",
+          "Remove the city filter if you added one",
+          "Switch Country to 'Worldwide'",
+          "Some niche roles have fewer postings — try again in a day or two"
+        ]
+      };
+    }
+
     if (errorLower.includes("limit") || errorLower.includes("quota") || errorLower.includes("too many requests")) {
       return {
         type: "Usage Limit Reached",
@@ -598,7 +621,10 @@ Summary: ${summary}`;
 
   return (
     <DashboardLayout title="SkillSync Parser" showBackButton backPath="/dashboard">
+      {isLocked && <UsageLimitLocked feature="Parser" limit={LIMIT} />}
+      {!isLocked && (
       <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-12">
+        {usedCount > 0 && <div className="md:col-span-12"><UsageLimitStrip used={usedCount} limit={LIMIT} feature="Parser" /></div>}
         
         {/* Left Column: Form & Upload */}
         <div className="md:col-span-5 space-y-6">
@@ -868,6 +894,16 @@ Summary: ${summary}`;
                         ))}
                       </select>
                     </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-text-secondary mb-1">City <span className="text-text-secondary/50">(optional)</span></label>
+                      <Input
+                        value={city}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
+                        placeholder="e.g. London, NYC"
+                        className="h-10"
+                      />
+                      <p className="text-[10px] text-text-secondary/60 mt-1">Adding a city narrows results significantly — leave blank for nationwide matches.</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1118,6 +1154,7 @@ Summary: ${summary}`;
         </div>
 
       </div>
+      )}
 
       {/* Job Detail Modal — opens on-site instead of immediately leaving for the external apply page */}
       <AnimatePresence>

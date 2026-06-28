@@ -112,8 +112,8 @@ export const api = {
   },
 
   // Parser Feature
-  parseResume: async (userId: string, resumeText: string, role: string, country: string, employmentType: string, locationType: string) => {
-    return fetchApi<any>('/api/parse-resume', { userId, mode: "parser", resumeText, role, country, employmentType, locationType }, { timeoutMs: 300000 });
+  parseResume: async (userId: string, resumeText: string, role: string, country: string, employmentType: string, locationType: string, city?: string) => {
+    return fetchApi<any>('/api/parse-resume', { userId, mode: "parser", resumeText, role, country, employmentType, locationType, ...(city ? { city } : {}) }, { timeoutMs: 300000 });
   },
 
   // Resume Tools Feature
