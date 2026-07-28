@@ -45,19 +45,32 @@ The platform is organized around three stages users naturally move through: **Di
 
 ## Demo
 
-> Demo videos live under `public/demos/` in the repo.
+[![Landing Page & Syncy Demo](https://img.youtube.com/vi/7PqDUtXiae4/0.jpg)](https://youtu.be/7PqDUtXiae4)
+**Landing Page & Syncy** — [Watch on YouTube](https://youtu.be/7PqDUtXiae4)
 
-| Feature | Demo |
-| --- | --- |
-| Landing Page & Syncy | [Watch demo](public/demos/syncy_final.mp4) |
-| Skill Assessment | [Watch demo](public/demos/skill_assessment_final.mp4) |
-| Roadmap Generator | [Watch demo](public/demos/roadmap_final.mp4) |
-| Resume Tools | [Watch demo](public/demos/resume_tools_final.mp4) |
-| SkillSync Radar | [Watch demo](public/demos/radar_final.mp4) |
-| SkillSync Parser | [Watch demo](public/demos/parser_final.mp4) |
-| Interview Preparation | [Watch demo](public/demos/interview_prep_final.mp4) |
-| SkillSync GapMap | [Watch demo](public/demos/gapmap_final.mp4) |
-| Career Mentor | [Watch demo](public/demos/career_mentor_final.mp4) |
+[![Skill Assessment Demo](https://img.youtube.com/vi/QfERaD_cMY8/0.jpg)](https://youtu.be/QfERaD_cMY8)
+**Skill Assessment** — [Watch on YouTube](https://youtu.be/QfERaD_cMY8)
+
+[![Roadmap Generator Demo](https://img.youtube.com/vi/gt4HsI-LhWk/0.jpg)](https://youtu.be/gt4HsI-LhWk)
+**Roadmap Generator** — [Watch on YouTube](https://youtu.be/gt4HsI-LhWk)
+
+[![Resume Tools Demo](https://img.youtube.com/vi/VduDCwGdow4/0.jpg)](https://youtu.be/VduDCwGdow4)
+**Resume Tools** — [Watch on YouTube](https://youtu.be/VduDCwGdow4)
+
+[![SkillSync Radar Demo](https://img.youtube.com/vi/FUM2ydsgNHk/0.jpg)](https://youtu.be/FUM2ydsgNHk)
+**SkillSync Radar** — [Watch on YouTube](https://youtu.be/FUM2ydsgNHk)
+
+[![SkillSync Parser Demo](https://img.youtube.com/vi/jPPV134pN2c/0.jpg)](https://youtu.be/jPPV134pN2c)
+**SkillSync Parser** — [Watch on YouTube](https://youtu.be/jPPV134pN2c)
+
+[![Interview Preparation Demo](https://img.youtube.com/vi/cV_mXom-tOY/0.jpg)](https://youtu.be/cV_mXom-tOY)
+**Interview Preparation** — [Watch on YouTube](https://youtu.be/cV_mXom-tOY)
+
+[![SkillSync GapMap Demo](https://img.youtube.com/vi/WLDYaX5wkbw/0.jpg)](https://youtu.be/WLDYaX5wkbw)
+**SkillSync GapMap** — [Watch on YouTube](https://youtu.be/WLDYaX5wkbw)
+
+[![Career Mentor Demo](https://img.youtube.com/vi/-qOdwym_3Ko/0.jpg)](https://youtu.be/-qOdwym_3Ko)
+**Career Mentor** — [Watch on YouTube](https://youtu.be/-qOdwym_3Ko)
 
 ---
 
