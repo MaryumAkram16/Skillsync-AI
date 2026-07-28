@@ -45,19 +45,19 @@ The platform is organized around three stages users naturally move through: **Di
 
 ## Demo
 
-> Demo videos are under `public/demos/` in the repo. Update these links if you later host them on a video platform (YouTube/Loom) instead.
+> Demo videos live under `public/demos/` in the repo.
 
 | Feature | Demo |
 | --- | --- |
-| Landing Page & Syncy | [Watch demo](public/demos/SkillSync_AI___Skill_Syncy_demo.mp4) |
-| Skill Assessment | [Watch demo](public/demos/SkillSync_AI___Skill_Assessment_demo.mp4) |
-| Roadmap Generator | [Watch demo](public/demos/SkillSync_AI___Skill_Roadmap_demo.mp4) |
-| Resume Tools | [Watch demo](public/demos/SkillSync_AI___Skill_Resume_Tools_demo.mp4) |
-| SkillSync Radar | [Watch demo](public/demos/SkillSync_AI___Skill_Radar_demo.mp4) |
-| SkillSync Parser | [Watch demo](public/demos/SkillSync_AI___Skill_Parser_demo.mp4) |
-| Interview Preparation | [Watch demo](public/demos/SkillSync_AI___Skill_Interview_Prep_demo.mp4) |
-| SkillSync GapMap | [Watch demo](public/demos/SkillSync_AI___Skill_Gapmap_demo.mp4) |
-| Career Mentor | [Watch demo](public/demos/SkillSync_AI___Skill_Career_Mentor_demo.mp4) |
+| Landing Page & Syncy | [Watch demo](public/demos/syncy_final.mp4) |
+| Skill Assessment | [Watch demo](public/demos/skill_assessment_final.mp4) |
+| Roadmap Generator | [Watch demo](public/demos/roadmap_final.mp4) |
+| Resume Tools | [Watch demo](public/demos/resume_tools_final.mp4) |
+| SkillSync Radar | [Watch demo](public/demos/radar_final.mp4) |
+| SkillSync Parser | [Watch demo](public/demos/parser_final.mp4) |
+| Interview Preparation | [Watch demo](public/demos/interview_prep_final.mp4) |
+| SkillSync GapMap | [Watch demo](public/demos/gapmap_final.mp4) |
+| Career Mentor | [Watch demo](public/demos/career_mentor_final.mp4) |
 
 ---
 
@@ -65,26 +65,26 @@ The platform is organized around three stages users naturally move through: **Di
 
 | Landing Page | Dashboard |
 | --- | --- |
-| [![Landing Page](SkillSync_AI___Skill_Landing_Page-1.png)](SkillSync_AI___Skill_Landing_Page-1.png) | [![Dashboard](SkillSync_AI___Skill_Dashboard.png)](SkillSync_AI___Skill_Dashboard.png) |
-| [![Landing Page](SkillSync_AI___Skill_Landing_Page-2.png)](SkillSync_AI___Skill_Landing_Page-2.png) | |
+| [![Landing Page](SkillSync%20AI%20%E2%80%94%20Skill%20Landing%20Page-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Landing%20Page-1.png) | [![Dashboard](SkillSync%20AI%20%E2%80%94%20Skill%20Dashboard.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Dashboard.png) |
+| [![Landing Page](SkillSync%20AI%20%E2%80%94%20Skill%20Landing%20Page-2.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Landing%20Page-2.png) | |
 
 | SkillSync Radar | SkillSync Parser |
 | --- | --- |
-| [![Radar](SkillSync_AI___Skill_Radar.png)](SkillSync_AI___Skill_Radar.png) | [![Parser](SkillSync_AI___Skill_Parser-1.png)](SkillSync_AI___Skill_Parser-1.png) |
+| [![Radar](SkillSync%20AI%20%E2%80%94%20Skill%20Radar.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Radar.png) | [![Parser](SkillSync%20AI%20%E2%80%94%20Skill%20Parser-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Parser-1.png) |
 
 | SkillSync GapMap | Skill Assessment |
 | --- | --- |
-| [![GapMap](SkillSync_AI___Skill_Gapmap.png)](SkillSync_AI___Skill_Gapmap.png) | [![Skill Assessment](SkillSync_AI___Skill_Assessment-1.png)](SkillSync_AI___Skill_Assessment-1.png) |
+| [![GapMap](SkillSync%20AI%20%E2%80%94%20Skill%20Gapmap.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Gapmap.png) | [![Skill Assessment](SkillSync%20AI%20%E2%80%94%20Skill%20Assessment-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Assessment-1.png) |
 
 | Career Mentor | Roadmap Generator |
 | --- | --- |
-| [![Career Mentor](SkillSync_AI___Skill_Career_Mentor-1.png)](SkillSync_AI___Skill_Career_Mentor-1.png) | [![Roadmap](SkillSync_AI___Skill_Roadmap-1.png)](SkillSync_AI___Skill_Roadmap-1.png) |
+| [![Career Mentor](SkillSync%20AI%20%E2%80%94%20Skill%20Career%20Mentor-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Career%20Mentor-1.png) | [![Roadmap](SkillSync%20AI%20%E2%80%94%20Skill%20Roadmap-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Roadmap-1.png) |
 
 | Resume Tools | Interview Preparation |
 | --- | --- |
-| [![Resume Tools](SkillSync_AI___Skill_Resume_Tools-1.png)](SkillSync_AI___Skill_Resume_Tools-1.png) | [![Interview Prep](SkillSync_AI___Skill_Interview_Prep-1.png)](SkillSync_AI___Skill_Interview_Prep-1.png) |
+| [![Resume Tools](SkillSync%20AI%20%E2%80%94%20Skill%20Resume%20Tools-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Resume%20Tools-1.png) | [![Interview Prep](SkillSync%20AI%20%E2%80%94%20Skill%20Interview%20Prep-1.png)](SkillSync%20AI%20%E2%80%94%20Skill%20Interview%20Prep-1.png) |
 
-> Screenshots are assumed to be at the repo root; demo videos are assumed to be under `public/demos/`.
+> Screenshots live at the repo root; demo videos live under `public/demos/`.
 
 ---
 
@@ -117,7 +117,7 @@ SkillSync AI closes that gap end-to-end:
 
 Type in a target role and country to analyze live job postings and see the most requested technical skills, soft skills, and salary range right now, broken into High / Medium / Low demand tiers.
 
-![Radar](SkillSync_AI___Skill_Radar.png)
+![Radar](SkillSync%20AI%20%E2%80%94%20Skill%20Radar.png)
 
 **How it works:** Queries JSearch (RapidAPI) for live postings matching the role and location, extracts and ranks required skills with code (no AI call needed for extraction), and calls an AI model only for salary intelligence normalization when structured data isn't available. Falls back to a secondary API key if the primary is rate-limited.
 
@@ -127,8 +127,8 @@ Type in a target role and country to analyze live job postings and see the most 
 
 Upload a resume (or enter details manually) and get back a clean extraction of current skills, role, and experience level — plus a live-matched job list scored on ATS compatibility, keyword match, experience match, and skill match.
 
-![Parser](SkillSync_AI___Skill_Parser-1.png)
-![Parser](SkillSync_AI___Skill_Parser-2.png)
+![Parser](SkillSync%20AI%20%E2%80%94%20Skill%20Parser-1.png)
+![Parser](SkillSync%20AI%20%E2%80%94%20Skill%20Parser-2.png)
 
 **How it works:** A cost-optimized, three-tier pipeline — code-based extraction first (free), AI (Gemini Flash) fallback only if code extraction yields too few results, and a final raw-text fallback if AI fails. Only the top-scoring matches are sent to a second AI pass for final scoring, keeping token usage low.
 
@@ -138,7 +138,7 @@ Upload a resume (or enter details manually) and get back a clean extraction of c
 
 A visual heatmap comparing your current skills against a target role's requirements, with a gap score and a generated learning path for each missing skill.
 
-![GapMap](SkillSync_AI___Skill_Gapmap.png)
+![GapMap](SkillSync%20AI%20%E2%80%94%20Skill%20Gapmap.png)
 
 **How it works:** Built on the same skill-extraction pipeline as the Parser, cross-referenced against Radar's live demand data to compute the gap score and prioritize which skills to learn first.
 
@@ -148,8 +148,8 @@ A visual heatmap comparing your current skills against a target role's requireme
 
 An adaptive, multi-stage quiz tailored to education level, field of study, and country. Produces a skill-level score, a category-by-category radar chart (tech literacy, logical thinking, problem solving, soft skills, career awareness), and personalized mentor feedback.
 
-![Skill Assessment](SkillSync_AI___Skill_Assessment-1.png)
-![Skill Assessment](SkillSync_AI___Skill_Assessment-2.png)
+![Skill Assessment](SkillSync%20AI%20%E2%80%94%20Skill%20Assessment-1.png)
+![Skill Assessment](SkillSync%20AI%20%E2%80%94%20Skill%20Assessment-2.png)
 
 **How it works:** Stage 1 generates an initial question set and scores it locally; Stage 2 branches into harder or different questions based on Stage 1 performance; the final submission merges both stages, grades everything, and clears the session so it can't leak into a future assessment. Results can be exported to JSON or CSV.
 
@@ -159,8 +159,8 @@ An adaptive, multi-stage quiz tailored to education level, field of study, and c
 
 Personalized career path recommendations weighed against your skills, education, and where the market is actually moving — each with a match percentage, salary range, career progression path, and real transition stories sourced from the web.
 
-![Career Mentor](SkillSync_AI___Skill_Career_Mentor-1.png)
-![Career Mentor](SkillSync_AI___Skill_Career_Mentor-2.png)
+![Career Mentor](SkillSync%20AI%20%E2%80%94%20Skill%20Career%20Mentor-1.png)
+![Career Mentor](SkillSync%20AI%20%E2%80%94%20Skill%20Career%20Mentor-2.png)
 
 **How it works:** Combines user-entered skills/background with live market data, calls an AI model to generate ranked recommendations, and separately surfaces real career-transition stories relevant to each suggested path.
 
@@ -170,8 +170,8 @@ Personalized career path recommendations weighed against your skills, education,
 
 Turns a career goal into a phased, step-by-step learning plan — prerequisites, topics, tools, and milestones per phase — tailored to weekly time commitment, current level, and target industry.
 
-![Roadmap](SkillSync_AI___Skill_Roadmap-1.png)
-![Roadmap](SkillSync_AI___Skill_Roadmap-2.png)
+![Roadmap](SkillSync%20AI%20%E2%80%94%20Skill%20Roadmap-1.png)
+![Roadmap](SkillSync%20AI%20%E2%80%94%20Skill%20Roadmap-2.png)
 
 **How it works:** Roadmap generation is proxied through a Supabase Edge Function for heavier processing, with results cached and resumable — users can pick up a previously generated roadmap instead of regenerating from scratch. Phase explanations use a persistent cache since many users request explanations for near-identical phase content, reducing AI calls to mostly free cache hits.
 
@@ -181,8 +181,8 @@ Turns a career goal into a phased, step-by-step learning plan — prerequisites,
 
 Rewrites vague resume bullets into achievement-driven language, shows an ATS compatibility score before/after with a visual diff, and drafts a full tailored cover letter with a keyword match breakdown.
 
-![Resume Tools](SkillSync_AI___Skill_Resume_Tools-1.png)
-![Resume Tools](SkillSync_AI___Skill_Resume_Tools-2.png)
+![Resume Tools](SkillSync%20AI%20%E2%80%94%20Skill%20Resume%20Tools-1.png)
+![Resume Tools](SkillSync%20AI%20%E2%80%94%20Skill%20Resume%20Tools-2.png)
 
 **How it works:** Takes resume text and a target job description, runs it through an AI rewrite pass that highlights exactly what changed and why (added keywords, quantified impact), and generates a matching cover letter scored against the same job description.
 
@@ -192,7 +192,7 @@ Rewrites vague resume bullets into achievement-driven language, shows an ATS com
 
 Mock quizzes and deep-dive interview questions generated from real listing data for a target role, with ideal answers, likely follow-ups, red flags to avoid, and what interviewers are actually looking for. Includes a searchable question library organized by category (Technical, Behavioral, Situational, Conceptual, System Design).
 
-![Interview Prep](SkillSync_AI___Skill_Interview_Prep-1.png)
+![Interview Prep](SkillSync%20AI%20%E2%80%94%20Skill%20Interview%20Prep-1.png)
 
 **How it works:** Generates questions scoped to target role, experience level, difficulty, and specific skills to focus on. Question sets are cached per-role so repeated requests for the same role/level combination don't re-trigger a full AI generation.
 
@@ -202,7 +202,7 @@ Mock quizzes and deep-dive interview questions generated from real listing data 
 
 A persistent chat assistant available throughout the platform to route users to the right tool based on what they're trying to do.
 
-![Syncy](SkillSync_AI___Skill_Syncy.png)
+![Syncy](SkillSync%20AI%20%E2%80%94%20Skill%20Syncy.png)
 
 ---
 
