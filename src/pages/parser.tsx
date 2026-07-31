@@ -30,7 +30,7 @@ export default function ParserPage() {
   if (!isLoggedIn || !user) return null;
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.metadata?.parserCount ?? 0;
+  const usedCount = (user as any)?.metadata?.usageCounts?.parser ?? 0;
   const LIMIT = 3;
   const isLocked = usedCount >= LIMIT;
 
@@ -64,7 +64,6 @@ export default function ParserPage() {
   const [parseProgress, setParseProgress] = useState(0);
   const [parseStatus, setParseStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [hasParsed, setHasParsed] = useState(false);
@@ -220,23 +219,20 @@ export default function ParserPage() {
       return;
     }
 
-    setValidationError(null);
-    setError(null);
-
     let resumeText = "";
     
     if (tab === "upload") {
       if (!file) {
-        setValidationError("Please upload a resume first.");
+        setError("Please upload a resume first.");
         return;
       }
     } else {
       if (!fullName.trim()) {
-        setValidationError("Please enter your full name.");
+        setError("Please enter your full name.");
         return;
       }
       if (skills.length === 0) {
-        setValidationError("Please add at least one skill.");
+        setError("Please add at least one skill.");
         return;
       }
       
@@ -251,13 +247,13 @@ Summary: ${summary}`;
     }
 
     if (!role.trim()) {
-      setValidationError("Please enter a target role.");
+      setError("Please enter a target role.");
       return;
     }
     
     const roleRegex = /^[a-zA-Z0-9\s]+$/;
     if (!roleRegex.test(role.trim())) {
-      setValidationError("Target role can only contain alphanumeric characters and spaces.");
+      setError("Target role can only contain alphanumeric characters and spaces.");
       return;
     }
 
@@ -269,7 +265,6 @@ Summary: ${summary}`;
     setParseProgress(5);
     setParseStatus(tab === "upload" ? "Reading file..." : "Processing manual entry...");
     setError(null);
-    setValidationError(null);
     setHasParsed(false);
     setJobs([]);
     // Clear previous extracted details on new submission
@@ -563,51 +558,51 @@ Summary: ${summary}`;
         animate={{ opacity: 1, height: "auto" }}
         className="overflow-hidden mt-6"
       >
-        <div className="p-5 border border-danger/20 rounded-2xl bg-danger/[0.02] shadow-sm space-y-4">
-          <div className="flex items-center gap-3 text-danger">
-            <div className="p-2 rounded-lg bg-danger/10">
-              {info.icon}
+        <div className="p-0 border border-danger/20 rounded-2xl bg-danger/[0.02] shadow-sm">
+          <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-danger/10">
+            <div className="p-6 md:w-1/2">
+              <div className="flex items-center gap-3 text-danger mb-3">
+                <div className="p-2 rounded-lg bg-danger/10">
+                  {info.icon}
+                </div>
+                <h3 className="font-display font-semibold text-lg">{info.type}</h3>
+              </div>
+              <p className="text-sm text-text-primary mb-4 leading-relaxed">
+                {info.description}
+              </p>
+              <div className="flex items-center gap-3">
+                <Button 
+                  size="sm" 
+                  className="bg-danger hover:bg-danger/90 text-white border-none"
+                  onClick={handleSubmit}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                  Retry Process
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-text-secondary hover:text-text-primary"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
             </div>
-            <h3 className="font-display font-semibold text-base sm:text-lg">{info.type}</h3>
-          </div>
-          <p className="text-sm text-text-primary leading-relaxed">
-            {info.description}
-          </p>
-          
-          {info.tips && info.tips.length > 0 && (
-            <div className="pt-3 border-t border-danger/10">
-              <h4 className="font-mono text-[10px] uppercase tracking-widest text-text-secondary mb-2.5 flex items-center gap-2">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+            <div className="p-6 md:w-1/2 bg-danger/[0.01]">
+              <h4 className="font-mono text-xs uppercase tracking-widest text-text-secondary mb-4 flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-amber-500" />
                 Troubleshooting Tips
               </h4>
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {info.tips.map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-text-secondary">
+                  <li key={i} className="flex items-start gap-3 text-sm text-text-secondary">
                     <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-danger/40 flex-shrink-0" />
-                    <span>{tip}</span>
+                    {tip}
                   </li>
                 ))}
               </ul>
             </div>
-          )}
-
-          <div className="flex items-center gap-3 pt-2">
-            <Button 
-              size="sm" 
-              className="bg-danger hover:bg-danger/90 text-white border-none text-xs"
-              onClick={handleSubmit}
-            >
-              <RefreshCw className="h-3.5 w-3.5 mr-2" />
-              Retry Process
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-text-secondary hover:text-text-primary text-xs"
-              onClick={() => setError(null)}
-            >
-              Dismiss
-            </Button>
           </div>
         </div>
       </motion.div>
@@ -940,10 +935,10 @@ Summary: ${summary}`;
                 </div>
               </div>
 
-              {validationError && (
+              {error && (
                 <div className="p-3 bg-danger/10 border border-danger/20 rounded-md flex items-start gap-2 text-danger text-sm">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>{validationError}</p>
+                  <p>{error}</p>
                 </div>
               )}
 

@@ -237,14 +237,12 @@ async function startServer() {
         return res.status(400).json({ error: "Missing required fields: resumeText, jobDescription, mode" });
       }
 
+      await checkAndIncrementUsage(userId, "resumeTools");
       log.info("ResumeTools processing", { mode, userId });
 
-      const result = await processResumeTools(userId, resumeText, jobDescription, mode, jobTitle, company, tone, userName);
+      const result = await processResumeTools(resumeText, jobDescription, mode, jobTitle, company, tone, userName);
       res.json(result);
     } catch (error: any) {
-      if (error.message && error.message.includes("Usage limit reached")) {
-        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: "resumeTools", limit: 3, used: 3 });
-      }
       if (error instanceof UsageLimitError) {
         return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
       }
@@ -301,23 +299,22 @@ async function startServer() {
       if (!resumeText) throw new Error("resumeText is required");
       if (!role) throw new Error("role is required");
 
+      await checkAndIncrementUsage(userId, "parser");
+
       const effectiveCountry = country || "Worldwide";
       const location = city ? `${city}, ${effectiveCountry}` : effectiveCountry;
 
       log.info("ParserService parseResumeAndFindJobs", { role, country: location, employmentType, locationType });
       const data = await parseResumeAndFindJobs(
-         userId,
-         resumeText,
-         role,
-         location,
-         employmentType,
-         locationType
+        userId,
+        resumeText,
+        role,
+        location,
+        employmentType,
+        locationType
       );
       res.json(data);
     } catch (error: any) {
-      if (error.message && error.message.includes("Usage limit reached")) {
-        return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: "parser", limit: 3, used: 3 });
-      }
       if (error instanceof UsageLimitError) {
         return res.status(403).json({ error: "USAGE_LIMIT_REACHED", message: error.message, featureKey: error.featureKey, limit: error.limit, used: error.used });
       }

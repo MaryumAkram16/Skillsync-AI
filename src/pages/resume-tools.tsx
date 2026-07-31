@@ -311,7 +311,7 @@ export default function ResumeToolsPage() {
   if (!isLoggedIn || !user) return null;
 
   // ── Usage limit ───────────────────────────────────────────────────────────
-  const usedCount = (user as any)?.metadata?.resumeToolsCount ?? 0;
+  const usedCount = (user as any)?.metadata?.usageCounts?.resumeTools ?? 0;
   const LIMIT = 3;
   const isLocked = usedCount >= LIMIT;
 
@@ -619,21 +619,6 @@ Summary: ${summary}`;
   };
 
   const getErrorInfo = (err: string) => {
-    const errorLower = err.toLowerCase();
-
-    if (errorLower.includes("limit") || errorLower.includes("quota") || errorLower.includes("too many requests")) {
-      return {
-        type: "Usage Limit Reached",
-        icon: <ShieldAlert className="h-5 w-5" />,
-        description: "Our AI engine is currently throttled or you've hit a daily usage limit.",
-        tips: [
-          "Wait 2-3 minutes and try again",
-          "Ensure you're signed in to persist history",
-          "Upgrade for higher limits and priority access"
-        ]
-      };
-    }
-
     if (err.includes("timed out")) {
       return {
         type: "Timeout Error",

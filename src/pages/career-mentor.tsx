@@ -752,25 +752,6 @@ export default function CareerMentorEnhancedPage() {
                   </div>
                 )}
 
-                {error && (
-                  <div className="flex items-start gap-3 mb-8 p-4 rounded-2xl bg-danger/10 border border-danger/20 text-danger">
-                    <div className="h-8 w-8 rounded-xl bg-danger/20 flex items-center justify-center flex-shrink-0">
-                      <AlertTriangle className="h-4 w-4 text-danger" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-black">Generation Failed</p>
-                      <p className="text-xs mt-0.5 text-text-primary">{error}</p>
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setError(null)}
-                      className="text-text-secondary hover:text-text-heading transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-
                 <form onSubmit={handleFormSubmit} className="space-y-8 relative z-10">
 
                   {/* Row 1: Education + Experience */}

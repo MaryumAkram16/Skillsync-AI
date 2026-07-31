@@ -33,39 +33,26 @@ export async function checkAndIncrementUsage(
   const userRef = adminDb.collection("users").doc(userId);
 
   if (mode === "check") {
-    try {
-      const doc = await userRef.get();
-      const used = doc.data()?.metadata?.usageCounts?.[featureKey] ?? 0;
-      return { used, limit };
-    } catch (err: any) {
-      console.warn(`[UsageLimits] Firestore read failed for ${featureKey}, bypassing count check:`, err.message);
-      return { used: 0, limit };
-    }
+    const doc = await userRef.get();
+    const used = doc.data()?.metadata?.usageCounts?.[featureKey] ?? 0;
+    return { used, limit };
   }
 
-  try {
-    return await adminDb.runTransaction(async (tx) => {
-      const doc = await tx.get(userRef);
-      const data = doc.data();
-      const tier = data?.tier || "Free";
-      if (tier === "Pro") {
-        const used = data?.metadata?.usageCounts?.[featureKey] ?? 0;
-        tx.set(userRef, { metadata: { usageCounts: { [featureKey]: used + 1 } } }, { merge: true });
-        return { used: used + 1, limit: Infinity };
-      }
-
+  return adminDb.runTransaction(async (tx) => {
+    const doc = await tx.get(userRef);
+    const data = doc.data();
+    const tier = data?.tier || "Free";
+    if (tier === "Pro") {
       const used = data?.metadata?.usageCounts?.[featureKey] ?? 0;
-      if (used >= limit) {
-        throw new UsageLimitError(featureKey, limit, used);
-      }
       tx.set(userRef, { metadata: { usageCounts: { [featureKey]: used + 1 } } }, { merge: true });
-      return { used: used + 1, limit };
-    });
-  } catch (err: any) {
-    if (err instanceof UsageLimitError) {
-      throw err;
+      return { used: used + 1, limit: Infinity };
     }
-    console.warn(`[UsageLimits] Firestore transaction failed for ${featureKey} due to permissions/network, bypassing limit check:`, err.message);
-    return { used: 0, limit };
-  }
+
+    const used = data?.metadata?.usageCounts?.[featureKey] ?? 0;
+    if (used >= limit) {
+      throw new UsageLimitError(featureKey, limit, used);
+    }
+    tx.set(userRef, { metadata: { usageCounts: { [featureKey]: used + 1 } } }, { merge: true });
+    return { used: used + 1, limit };
+  });
 }

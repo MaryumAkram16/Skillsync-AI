@@ -19,7 +19,6 @@
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry, runWithConcurrency } from "./geminiRetry";
-import admin, { adminDb } from "./firebaseAdmin";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,8 +184,7 @@ async function fetchJobs(
   country: string,
   employmentType: string,
   locationType: string,
-  candidateYearsExperience: number = 0,
-  isRetry: boolean = false
+  candidateYearsExperience: number = 0
 ): Promise<RawJob[]> {
   const keys = [
     process.env.RAPIDAPI_KEY,
@@ -215,29 +213,26 @@ async function fetchJobs(
   const buildQuery = (c: string) =>
     c.toLowerCase() === "worldwide" || !c ? roleQuery : `${roleQuery} in ${c}`;
 
-  const queryText = buildQuery(country);
-  const datePosted = isRetry ? "all" : "month";
-  console.log(`[Parser] fetchJobs query: "${queryText}", date_posted: "${datePosted}", isRetry: ${isRetry}`);
-
-  let jobs = await fetchJobsOnce(queryText, datePosted, employmentTypes, isRemote, keys);
+  // Tier 1: date_posted=month, original country
+  const queryT1 = buildQuery(country);
+  console.log(`[Parser] Tier 1: "${queryT1}" date_posted=month`);
+  let jobs = await fetchJobsOnce(queryT1, "month", employmentTypes, isRemote, keys);
   if (jobs.length > 0) return jobs;
 
-  // On first zero-result response, retries once with date_posted=all (same country)
-  if (!isRetry) {
-    console.log(`[Parser] Tier 1 empty — retrying with isRetry=true (date_posted=all)`);
-    jobs = await fetchJobs(role, country, employmentType, locationType, candidateYearsExperience, true);
-    if (jobs.length > 0) return jobs;
-  }
+  // Tier 2: date_posted=all, same country
+  console.log(`[Parser] Tier 1 empty — Tier 2: "${queryT1}" date_posted=all`);
+  jobs = await fetchJobsOnce(queryT1, "all", employmentTypes, isRemote, keys);
+  if (jobs.length > 0) return jobs;
 
-  // If still zero, retries once more with country="Worldwide" (only if not already Worldwide)
+  // Tier 3: date_posted=all, Worldwide
   if (countryLower !== "worldwide") {
-    console.log(`[Parser] Tier 2 empty — retrying with country="Worldwide"`);
-    jobs = await fetchJobs(role, "Worldwide", employmentType, locationType, candidateYearsExperience, true);
+    const queryT3 = roleQuery;
+    console.log(`[Parser] Tier 2 empty — Tier 3: "${queryT3}" date_posted=all (Worldwide)`);
+    jobs = await fetchJobsOnce(queryT3, "all", employmentTypes, isRemote, keys);
     if (jobs.length > 0) return jobs;
   }
 
-  console.log(`[Parser] No jobs found for ${cleanedRole}. Returning empty array.`);
-  return [];
+  throw new Error(`No jobs found for "${cleanedRole}". Try a different or broader job title.`);
 }
 
 // ─── Step 3: Normalize jobs ───────────────────────────────────────────────────
@@ -907,26 +902,6 @@ async function fetchLearningResources(
 
 // ─── Main exported function ───────────────────────────────────────────────────
 
-export async function checkParserLimit(userId: string): Promise<void> {
-  try {
-    const userRef = adminDb.collection("users").doc(userId);
-    await adminDb.runTransaction(async (tx) => {
-      const userDoc = await tx.get(userRef);
-      const data = userDoc.data();
-      const parserCount = data?.metadata?.parserCount ?? 0;
-      const maxParser = parseInt(process.env.MAX_FREE_PARSINGS || "3");
-      if (parserCount >= maxParser) {
-        throw new Error("Usage limit reached. You can only perform up to 3 resume parsings.");
-      }
-    });
-  } catch (error: any) {
-    if (error.message && error.message.includes("Usage limit reached")) {
-      throw error;
-    }
-    console.warn("[Parser] Firestore limit check failed (bypass due to permissions/network):", error.message);
-  }
-}
-
 export async function parseResumeAndFindJobs(
   userId: string,
   resumeText: string,
@@ -935,8 +910,6 @@ export async function parseResumeAndFindJobs(
   employmentType: string,
   locationType: string
 ): Promise<ParserResult> {
-  await checkParserLimit(userId);
-
   // 1. Validate
   validateInputs(role, country);
 
@@ -946,39 +919,12 @@ export async function parseResumeAndFindJobs(
   console.log(`[Parser] Detected candidate experience: ${candidateYearsExperience} years`);
 
   // 2. Fetch live jobs from JSearch (entry-level/internship-biased if candidateYearsExperience === 0)
-  let rawJobs: any[] = [];
-  try {
-    rawJobs = await fetchJobs(role, country, employmentType, locationType, candidateYearsExperience);
-  } catch (err: any) {
-    if (err.message && (err.message.includes("No jobs found") || err.message.includes("No JSearch API keys"))) {
-      console.log(`[Parser] No jobs found or API key missing, returning empty result gracefully.`, err.message);
-      return {
-        topJobs: [],
-        aggregatedSkills: {
-          jobSkills: { high: [], medium: [], low: [] },
-          candidateSkills: [],
-          gapScore: 0
-        },
-        missingSkills: []
-      };
-    }
-    throw err;
-  }
+  const rawJobs = await fetchJobs(role, country, employmentType, locationType, candidateYearsExperience);
 
   // 3. Normalize + filter
   const validJobs = normalizeJobs(rawJobs);
-  if (validJobs.length === 0) {
-    console.log(`[Parser] No valid normalized jobs found, returning empty result gracefully.`);
-    return {
-      topJobs: [],
-      aggregatedSkills: {
-        jobSkills: { high: [], medium: [], low: [] },
-        candidateSkills: [],
-        gapScore: 0
-      },
-      missingSkills: []
-    };
-  }
+  if (validJobs.length === 0)
+    throw new Error(`No valid jobs found for "${role}" in "${country}". Try a different role.`);
 
   // 4. Extract resume skills from text using CODE (free)
   const resumeSkills = extractResumeSkills(resumeText);
@@ -1002,18 +948,6 @@ export async function parseResumeAndFindJobs(
 
   // 8. Fetch YouTube resources for missing skills
   const missingSkills = await fetchLearningResources(missingSkillsList);
-
-  // Increment successful count
-  try {
-    const userRef = adminDb.collection("users").doc(userId);
-    await userRef.set({
-      metadata: {
-        parserCount: admin.firestore.FieldValue.increment(1)
-      }
-    }, { merge: true });
-  } catch (error: any) {
-    console.warn("[Parser] Failed to increment parserCount due to permissions/network:", error.message);
-  }
 
   return { topJobs, aggregatedSkills, missingSkills };
 }
