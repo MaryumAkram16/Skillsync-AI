@@ -26,14 +26,14 @@ export const storage = {
   /**
    * Retrieves an item from storage. Automatically parses JSON strings if valid.
    */
-  get(key: string): any {
+  get<T = any>(key: string): T | null {
     try {
       const raw = isAvailable ? window.localStorage.getItem(key) : memoryFallback.get(key);
       if (raw === null || raw === undefined) return null;
       try {
-        return JSON.parse(raw);
+        return JSON.parse(raw) as T;
       } catch {
-        return raw; // Fallback to raw string if not a valid JSON string
+        return raw as unknown as T; // Fallback to raw string if not a valid JSON string
       }
     } catch (err) {
       console.warn(`[Storage] Failed to get key: ${key}`, err);
@@ -44,8 +44,8 @@ export const storage = {
   /**
    * Alias of get() supporting dynamic JSON data extraction.
    */
-  getDynamic(key: string): any {
-    return this.get(key);
+  getDynamic<T = any>(key: string): T | null {
+    return storage.get<T>(key);
   },
 
   /**
@@ -65,6 +65,13 @@ export const storage = {
   },
 
   /**
+   * Alias of set() supporting dynamic JSON data storage.
+   */
+  setDynamic(key: string, value: any): void {
+    storage.set(key, value);
+  },
+
+  /**
    * Removes a specific item from storage.
    */
   remove(key: string): void {
@@ -77,5 +84,12 @@ export const storage = {
     } catch (err) {
       console.warn(`[Storage] Failed to remove key: ${key}`, err);
     }
+  },
+
+  /**
+   * Alias of remove() supporting dynamic JSON data removal.
+   */
+  removeDynamic(key: string): void {
+    storage.remove(key);
   }
 };
