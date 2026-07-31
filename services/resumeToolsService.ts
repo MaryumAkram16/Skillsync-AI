@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import admin, { adminDb } from "./firebaseAdmin";
 
 interface ResumeToolsResult {
   success: boolean;
@@ -387,7 +388,28 @@ function parseJsonResponse(raw: string): any {
 
 // ─── Main exported function ───────────────────────────────────────────────────
 
+export async function checkResumeToolsLimit(userId: string): Promise<void> {
+  try {
+    const userRef = adminDb.collection("users").doc(userId);
+    await adminDb.runTransaction(async (tx) => {
+      const userDoc = await tx.get(userRef);
+      const data = userDoc.data();
+      const resumeToolsCount = data?.metadata?.resumeToolsCount ?? 0;
+      const maxResumeTools = parseInt(process.env.MAX_FREE_RESUME_TOOLS || "3");
+      if (resumeToolsCount >= maxResumeTools) {
+        throw new Error("Usage limit reached. You can only perform up to 3 resume tailors.");
+      }
+    });
+  } catch (error: any) {
+    if (error.message && error.message.includes("Usage limit reached")) {
+      throw error;
+    }
+    console.warn("[ResumeTools] Firestore limit check failed (bypass due to permissions/network):", error.message);
+  }
+}
+
 export async function processResumeTools(
+  userId: string,
   resumeText: string,
   jobDescription: string,
   mode: string,
@@ -396,6 +418,8 @@ export async function processResumeTools(
   tone: string = "Professional",
   userName: string = ""
 ): Promise<ResumeToolsResult> {
+  await checkResumeToolsLimit(userId);
+
   if (!resumeText?.trim() || !jobDescription?.trim() || !mode?.trim()) {
     return { success: false, mode, error: "Missing required fields" };
   }
@@ -562,6 +586,18 @@ export async function processResumeTools(
   const response: ResumeToolsResult = { success: true, mode: parsed.mode };
   if (parsed.rewrite) response.rewrite = parsed.rewrite;
   if (parsed.coverLetter) response.coverLetter = parsed.coverLetter;
+
+  // Increment successful count
+  try {
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.set({
+      metadata: {
+        resumeToolsCount: admin.firestore.FieldValue.increment(1)
+      }
+    }, { merge: true });
+  } catch (error: any) {
+    console.warn("[ResumeTools] Failed to increment resumeToolsCount due to permissions/network:", error.message);
+  }
 
   return response;
 }

@@ -70,17 +70,17 @@ export function ChatbotWidget() {
   // never stored) for guests on every mount.
   const [sessionId, setSessionId] = useState(() => {
     if (sessionKey) {
-      const existing = storage.getDynamic(sessionKey);
+      const existing = storage.get(sessionKey);
       if (existing) return existing;
     }
     const newId = `session_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-    if (sessionKey) storage.setDynamic(sessionKey, newId);
+    if (sessionKey) storage.set(sessionKey, newId);
     return newId;
   });
 
   const [messages, setMessages] = useState<Message[]>(() => {
     if (historyKey) {
-      const saved = storage.getDynamic<Message[]>(historyKey);
+      const saved = storage.get(historyKey);
       if (saved) {
         return saved;
       }
@@ -99,11 +99,11 @@ export function ChatbotWidget() {
 
     if (currentUid) {
       // Just signed in (or switched accounts) — load that user's own history.
-      const saved = storage.getDynamic<Message[]>(`skillsync_chatbot_history_${currentUid}`);
+      const saved = storage.get(`skillsync_chatbot_history_${currentUid}`);
       setMessages(saved ?? [DEFAULT_MESSAGE]);
-      const existingSession = storage.getDynamic<string>(`skillsync_chatbot_session_${currentUid}`);
+      const existingSession = storage.get(`skillsync_chatbot_session_${currentUid}`);
       const newSession = existingSession || `session_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-      if (!existingSession) storage.setDynamic(`skillsync_chatbot_session_${currentUid}`, newSession);
+      if (!existingSession) storage.set(`skillsync_chatbot_session_${currentUid}`, newSession);
       setSessionId(newSession);
     } else {
       // Signed out — never carry the previous user's (or guest's) messages over.
@@ -116,7 +116,7 @@ export function ChatbotWidget() {
   // conversations stay in memory only and vanish when they leave/refresh.
   useEffect(() => {
     if (historyKey) {
-      storage.setDynamic(historyKey, messages);
+      storage.set(historyKey, messages);
     }
 
     // Trigger an event so the dashboard can pick it up
@@ -135,7 +135,7 @@ export function ChatbotWidget() {
   const handleClearHistory = () => {
     setMessages([DEFAULT_MESSAGE]);
     if (historyKey) {
-      storage.removeDynamic(historyKey);
+      storage.remove(historyKey);
     }
   };
 

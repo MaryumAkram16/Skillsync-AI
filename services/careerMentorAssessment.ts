@@ -10,17 +10,24 @@ import { InterestWithProficiency, QuizQuestion } from "./careerMentorTypes";
  * Firestore transaction, preventing race conditions from concurrent requests.
  */
 export async function checkAndIncrementAssessmentLimit(userId: string): Promise<void> {
-  const userRef = adminDb.collection("users").doc(userId);
-  await adminDb.runTransaction(async (tx) => {
-    const userDoc = await tx.get(userRef);
-    const data = userDoc.data();
-    const assessmentCount = data?.metadata?.assessmentCount ?? 0;
-    const maxAssessments = parseInt(process.env.MAX_FREE_ASSESSMENTS || "3");
-    if (assessmentCount >= maxAssessments) {
-      throw new Error("Assessment limit reached. You can only perform up to 3 assessments.");
+  try {
+    const userRef = adminDb.collection("users").doc(userId);
+    await adminDb.runTransaction(async (tx) => {
+      const userDoc = await tx.get(userRef);
+      const data = userDoc.data();
+      const assessmentCount = data?.metadata?.assessmentCount ?? 0;
+      const maxAssessments = parseInt(process.env.MAX_FREE_ASSESSMENTS || "3");
+      if (assessmentCount >= maxAssessments) {
+        throw new Error("Assessment limit reached. You can only perform up to 3 assessments.");
+      }
+      tx.set(userRef, { metadata: { assessmentCount: assessmentCount + 1 } }, { merge: true });
+    });
+  } catch (error: any) {
+    if (error.message && error.message.includes("Assessment limit reached")) {
+      throw error;
     }
-    tx.set(userRef, { metadata: { assessmentCount: assessmentCount + 1 } }, { merge: true });
-  });
+    console.warn("[Assessment] Firestore limit transaction failed (bypass due to permissions/network):", error.message);
+  }
 }
 
 /**
