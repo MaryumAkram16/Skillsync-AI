@@ -5,7 +5,12 @@
  * with frontend "none". The app is created once per function instance.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createApp } from "../server";
+// The server is bundled into api/_server.mjs by the build command in vercel.json
+// (esbuild, like `npm run build`). Vercel compiles each .ts file on its own and
+// Node's ESM loader needs explicit file extensions, which server.ts and its
+// services don't use, so importing ../server directly fails at runtime.
+// Files starting with "_" in api/ are not deployed as functions of their own.
+import { createApp } from "./_server.mjs";
 
 const appPromise = createApp("none");
 
