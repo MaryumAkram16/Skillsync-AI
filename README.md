@@ -25,6 +25,7 @@ Most AI career tools assume you already know your target role and just need a po
   - [9. Syncy — In-App Assistant](#9-syncy--in-app-assistant)
 - [Tech Stack](#tech-stack)
 - [System Architecture](#system-architecture)
+- [Matching Evaluation](#matching-evaluation)
 - [API Reference](#api-reference)
 - [Security & Compliance](#security--compliance)
 - [Setup Guide](#setup-guide)
@@ -255,6 +256,59 @@ Express server (server.ts)
 3. Per-route rate limiting checks usage against Firestore before proceeding.
 4. The route calls the relevant service — live job data (RapidAPI), an AI provider (Gemini/OpenAI), or a Supabase Edge Function for heavier workflows.
 5. Results are returned to the client; only extracted, non-sensitive data (e.g. skills list) is persisted — raw resume text is never stored.
+
+---
+
+## Matching Evaluation
+
+The Parser's job matching is measured against a labelled set, so changes to it can be checked with numbers instead of by eye.
+
+**Dataset** (`evals/matching/dataset.json`, all fictional): 20 resumes (students to staff engineers, plus career changers), 30 job postings (with and without clear "Required / Preferred" sections), and 71 resume–job pairs labelled **strong**, **partial** or **poor** fit. Each resume and posting also has the skills and years of experience a human reviewer would extract. Skills use the names in `KNOWN_SKILLS`; years are left unlabelled where the answer is debatable (career changers, a PhD).
+
+### Offline (code-based stages, runs in CI)
+
+`tests/matchingEval.test.ts` runs the evaluation on every push and fails if any result drops below the table. To print the full report:
+
+```bash
+npx tsx evals/matching/run.ts
+```
+
+| Stage | Metric | Before | Now |
+|---|---|---|---|
+| Resume skills | precision / recall | 99.3% / 95.2% | 99.3% / 98.6% |
+| Job skills | precision / recall | 98.3% / 95.6% | 98.4% / 98.4% |
+| Resume experience | within ±1 year (17 labelled) | 15/17 | 17/17 |
+| Job years required | exact | 30/30 | 30/30 |
+| Required vs preferred | skills in the right bucket | 115/123 | 118/123 |
+| Pre-score | same-resume pairs ordered correctly | 75/81 (92.6%) | 76.5/81 (94.4%) |
+| Pre-score | mean score, strong / partial / poor | 87.9 / 39.2 / 4.8 | 88.4 / 38.5 / 3.0 |
+| Top-8 cut | strong fits that reach the AI step | 100% | 100% |
+
+**What the first run found, and what changed:**
+
+- *Experience detection* counted a student's degree years ("BS Computer Science (2022 – 2026)") as four years of work, which removed the experience penalty and let a "4+ years" job rank level with student-appropriate roles. It also missed ranges written with months ("Mar 2020 – Feb 2025"). Date ranges next to education words on the same line are now skipped, and month-name ranges are read.
+- *Skill matching* missed plurals ("REST APIs", "webhooks", "WebSockets", "API integrations", "data pipelines"). `skillPattern()` now accepts a plural `s`/`es`, except for everyday words that are also skill names ("make", "express", "go"), so "makes" or "goes" don't become skills.
+
+**Known limits** (left as they are, reported here):
+
+- Aliases outside the keyword list are missed: "Hugging Face" (with a space), "Postgres", "Node".
+- A few false positives remain: "Azure OpenAI" also counts as "OpenAI", "We go fast" as Go, "make sure" as Make.
+- The pre-score only compares keywords. It can't see that a React developer is a partial fit for a Vue role, and it doesn't reward a junior role for a junior candidate, which accounts for most of the remaining ordering errors.
+- The fixes were made after looking at this set, and there is no separate held-out set, so the "Now" column is an optimistic estimate.
+
+### Live (AI scoring step)
+
+`evals/matching/live.ts` sends each resume's labelled jobs through the OpenAI scoring step (`analyzeWithAI`, gpt-4o-mini) and reports how well its `matchScore` agrees with the labels: pairs ordered correctly, mean score per label, strong fits scored 70+, and poor fits scored below 50 (the prompt's own threshold). It makes one call per resume (20 in total) and refuses to run without `OPENAI_API_KEY`.
+
+```bash
+OPENAI_API_KEY=... npx tsx evals/matching/live.ts
+```
+
+In GitHub, it runs only when started manually (Actions → *Matching live evaluation*) with the `OPENAI_API_KEY` secret and the `ENABLE_LIVE_EVAL` variable set; the report is kept as a run artifact.
+
+| Model | Date | Pairs ordered correctly | Mean score, strong / partial / poor | Strong 70+ | Poor < 50 |
+|---|---|---|---|---|---|
+| gpt-4o-mini | — | _pending first live run_ | — | — | — |
 
 ---
 
