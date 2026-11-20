@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
+import { firebaseCredential } from "./firebaseCredential";
 
 /**
  * Shared firebase-admin singleton.
@@ -18,7 +19,7 @@ import firebaseConfig from "../firebase-applet-config.json";
  */
 if (!admin.apps || admin.apps.length === 0) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+    credential: firebaseCredential(),
     projectId: firebaseConfig.projectId,
   });
 }
