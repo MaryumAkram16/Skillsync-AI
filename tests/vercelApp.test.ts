@@ -44,6 +44,17 @@ describe('vercel.json', () => {
     ]);
   });
 
+  it('builds the server into the bundle the function imports, with an explicit extension', () => {
+    // Vercel compiles api/index.ts on its own and Node's ESM loader needs file
+    // extensions; importing ../server directly crashed the first deploy with
+    // ERR_MODULE_NOT_FOUND. The function must import the esbuild bundle instead.
+    expect(config.buildCommand).toContain('--outfile=api/_server.mjs');
+    expect(config.buildCommand).toContain('vite build');
+    const entry = readFileSync(new URL('../api/index.ts', import.meta.url), 'utf8');
+    expect(entry).toMatch(/from "\.\/_server\.mjs"/);
+    expect(entry).not.toMatch(/from "\.\.\/server"/);
+  });
+
   it('allows the slow AI routes the same 5 minutes the frontend waits', () => {
     expect(config.functions['api/index.ts'].maxDuration).toBe(300);
     const api = readFileSync(new URL('../src/utils/api.ts', import.meta.url), 'utf8');
