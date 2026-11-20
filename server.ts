@@ -11,7 +11,6 @@ if (firebaseConfig.projectId) {
   process.env.GCLOUD_PROJECT = firebaseConfig.projectId;
 }
 
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
@@ -27,11 +26,12 @@ import { adminDb } from "./services/firebaseAdmin";
 import { log } from "./logger";
 import { auditMiddleware } from "./auditMiddleware";
 import { validateResponse, isExplainPhaseResponse, isExplainGapResponse, isTrendExplainResponse } from "./apiSchemas";
+import { firebaseCredential } from "./services/firebaseCredential";
 
 // ── Firebase Admin SDK init (for server-side token verification) ──────────────
 if (!admin.apps || admin.apps.length === 0) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+    credential: firebaseCredential(),
     projectId: firebaseConfig.projectId,
   });
 }
@@ -72,9 +72,19 @@ async function optionalAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-async function startServer() {
+/**
+ * How the app serves the React frontend:
+ *   "vite"   - local development, Vite dev server with HMR
+ *   "static" - a single long-running server (Cloud Run, `npm start`) serves dist/
+ *   "none"   - Vercel: the CDN serves dist/, the function only handles /api
+ */
+export type FrontendMode = "vite" | "static" | "none";
+
+/** Builds the Express app without listening, so Vercel can run it as a function. */
+export async function createApp(
+  frontend: FrontendMode = process.env.NODE_ENV !== "production" ? "vite" : "static",
+): Promise<express.Express> {
   const app = express();
-  const PORT = 3000;
 
   const allowedOrigins = process.env.NODE_ENV === "production"
     ? (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean)
@@ -1022,14 +1032,16 @@ Rules:
 
   // ================= FRONTEND =================
 
-  if (process.env.NODE_ENV !== "production") {
-    // Development: use Vite dev server with HMR
+  if (frontend === "vite") {
+    // Development: use Vite dev server with HMR. Imported here, not at the top,
+    // so production builds and the Vercel function never load Vite.
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (frontend === "static") {
     // Production: serve pre-built static files from dist/
     const distPath = path.join(process.cwd(), "dist");
 
@@ -1060,12 +1072,22 @@ Rules:
     });
   });
 
+  return app;
+}
+
+async function startServer() {
+  const PORT = 3000;
+  const app = await createApp();
   app.listen(PORT, "0.0.0.0", () => {
     log.info("Server started", { port: PORT, env: process.env.NODE_ENV || "development" });
   });
 }
 
-startServer().catch((err) => {
-  log.error("Fatal startup error", { error: err.message });
-  process.exit(1);
-});
+// `npm run dev` / `npm start` run this file directly. On Vercel (api/index.ts)
+// and in tests it is only imported, so it must not start a listener there.
+if (!process.env.VERCEL && !process.env.VITEST) {
+  startServer().catch((err) => {
+    log.error("Fatal startup error", { error: err.message });
+    process.exit(1);
+  });
+}

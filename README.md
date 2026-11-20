@@ -390,8 +390,9 @@ RAPIDAPI_KEY_2=your_backup_rapidapi_key           # optional fallback
 SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Firebase Admin
-# Provide credentials via applicationDefault() (e.g. GOOGLE_APPLICATION_CREDENTIALS
-# pointing to a service account JSON) — see firebase-applet-config.json for project ID.
+# Either Application Default Credentials (Cloud Run, or GOOGLE_APPLICATION_CREDENTIALS
+# pointing to a service-account JSON file), or the key itself in one variable:
+FIREBASE_SERVICE_ACCOUNT=           # service-account key JSON, raw or base64 (required on Vercel)
 ```
 
 ### 3. Run Locally
@@ -401,6 +402,22 @@ npm run dev
 ```
 
 This starts the Express server, which also boots Vite for the frontend — the app is served from a single process in development.
+
+### Deploy on Vercel
+
+The repository deploys to Vercel as-is (`vercel.json`):
+
+- The React app is built with `vite build` and served from `dist/` by Vercel's CDN, with every non-API path falling back to `index.html`.
+- Every `/api/*` request goes to one Vercel Function, `api/index.ts`, which runs the same Express app as `npm run dev` (`createApp("none")` in `server.ts`). It may run for up to 300 s, the same time the frontend waits for the slowest AI routes.
+
+To set it up:
+
+1. Import the repository in Vercel. The framework (Vite) and build settings come from `vercel.json`.
+2. Add the environment variables from step 2 in **Project Settings → Environment Variables**, including `FIREBASE_SERVICE_ACCOUNT`: Vercel has no Application Default Credentials, so Firebase Admin needs the service-account key (Firebase console → Project settings → Service accounts → Generate new private key). Paste the file's JSON, or its base64.
+3. Add the Vercel domain (e.g. `your-project.vercel.app`) under Firebase console → Authentication → Settings → **Authorized domains**, or Google sign-in is blocked there.
+4. Deploy, then open `/api/health`: `"firestore": "ok"` confirms the Firebase credentials work.
+
+Cloud Run keeps working unchanged: without `FIREBASE_SERVICE_ACCOUNT`, Firebase Admin uses Application Default Credentials as before.
 
 ### 4. Verify Setup
 
