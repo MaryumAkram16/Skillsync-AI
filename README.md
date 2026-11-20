@@ -308,7 +308,9 @@ In GitHub, it runs only when started manually (Actions → *Matching live evalua
 
 | Model | Date | Pairs ordered correctly | Mean score, strong / partial / poor | Strong 70+ | Poor < 50 |
 |---|---|---|---|---|---|
-| gpt-4o-mini | — | _pending first live run_ | — | — | — |
+| gpt-4o-mini | 2026-11-20 | 79.5/81 (98.1%) | 87.4 / 43.2 / 14.8 | 20/21 | 25/25 |
+
+First run ([workflow run](https://github.com/MaryumAkram16/Skillsync-AI/actions/runs/44757739307), ratings kept as the `matching-live-report` artifact): all 71 labelled pairs were rated, none left out. The AI step orders same-resume pairs correctly 98.1% of the time against 94.4% for the code pre-score that feeds it, and keeps the three labels far apart on average. Every poor fit scored below 50 as the prompt instructs; one strong fit fell short of 70. One run at temperature 0.2 on 71 pairs labelled by the same person who wrote the evaluation, so treat these as indicative, not a benchmark.
 
 ---
 
