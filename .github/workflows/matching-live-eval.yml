@@ -1,0 +1,48 @@
+# Live evaluation of the AI job-scoring step on the labelled pairs in
+# evals/matching/dataset.json. Makes real OpenAI calls (one per resume, 20 in
+# total), so it never runs on pushes or pull requests.
+#
+# To run it:
+#   1. Add the repository secret OPENAI_API_KEY.
+#   2. Set the repository variable ENABLE_LIVE_EVAL to "true".
+#   3. Actions -> "Matching live evaluation" -> Run workflow.
+# The Markdown report is printed in the log and kept as a run artifact.
+
+name: Matching live evaluation
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  live-eval:
+    if: vars.ENABLE_LIVE_EVAL == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check for the API key
+        id: creds
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::OPENAI_API_KEY is not set; skipping the live evaluation."; echo "available=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Run the live evaluation
+        if: steps.creds.outputs.available == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npx tsx evals/matching/live.ts
+      - name: Upload the report
+        if: always() && steps.creds.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: matching-live-report
+          path: reports/matching-live-*.md
+          if-no-files-found: ignore

@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Evaluation reports (live runs are kept as CI artifacts)
+reports/
