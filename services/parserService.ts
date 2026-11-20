@@ -75,7 +75,7 @@ interface RawJob {
   job_salary_period?: string;
 }
 
-interface NormalizedJob {
+export interface NormalizedJob {
   job_id: string;
   job_title: string;
   employer_name: string;
@@ -90,7 +90,7 @@ interface NormalizedJob {
 }
 
 // Structured extracted requirements for a single job
-interface JobRequirements {
+export interface JobRequirements {
   skills: string[];         // all detected skills
   mustHave: string[];       // from "required" / "must have" sections
   niceToHave: string[];     // from "preferred" / "nice to have" sections
@@ -100,7 +100,7 @@ interface JobRequirements {
   extractionMethod: "code" | "gemini" | "raw";
 }
 
-interface AIJobResult {
+export interface AIJobResult {
   jobTitle: string;
   company: string;
   location: string;
@@ -310,7 +310,12 @@ const SOFT_SKILLS = new Set([
 
 // ─── Resume experience-level detection (for entry-level/internship bias) ──────
 
-function detectResumeExperienceYears(resumeText: string): number {
+// Words that mark a date range as study rather than work, looked for in the
+// text just before the range.
+const EDUCATION_CONTEXT =
+  /\b(?:degree|university|college|student|bachelor'?s?|master'?s?|bs|bsc|ba|ms|msc|mba|phd|doctorate|undergraduate|graduate program|coursework|gpa)\b/i;
+
+export function detectResumeExperienceYears(resumeText: string): number {
   const text = resumeText.toLowerCase();
 
   // Explicit "X years of experience" mention
@@ -318,8 +323,16 @@ function detectResumeExperienceYears(resumeText: string): number {
   if (explicit) return parseInt(explicit[1], 10);
 
   // Look for date ranges in work-experience-style entries, e.g. "2019 - 2023",
-  // "Jan 2020 – Present" and sum up rough duration. Cheap heuristic, not exact.
-  const yearRanges = [...text.matchAll(/(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/gi)];
+  // "Jan 2020 – Present", "Mar 2020 – Feb 2025", and sum up rough duration.
+  // Ranges next to education words ("BS Computer Science (2022 – 2026)") are
+  // study, not work, and are skipped. Cheap heuristic, not exact.
+  const yearRanges = [
+    ...text.matchAll(/(20\d{2}|19\d{2})\s*[-–—]\s*(?:[a-z]{3,9}\.?\s+)?(20\d{2}|19\d{2}|present|current)/gi),
+  ].filter((m) => {
+    // Up to 60 characters before the range, on the same line or bullet only.
+    const before = text.slice(Math.max(0, (m.index ?? 0) - 60), m.index ?? 0);
+    return !EDUCATION_CONTEXT.test(before.split(/[\n•|;]/).pop() ?? "");
+  });
   if (yearRanges.length > 0) {
     const now = new Date().getFullYear();
     let totalYears = 0;
@@ -341,14 +354,28 @@ function detectResumeExperienceYears(resumeText: string): number {
   return 0;
 }
 
-function extractResumeSkills(resumeText: string): string[] {
+// Skills that are also everyday English words: matched only in their exact
+// form, so "makes", "expresses" or "goes" don't turn into skills.
+const NO_PLURAL = new Set(["make", "express", "go", "r", "rust", "swift", "spark", "chroma", "lambda"]);
+
+/**
+ * Whole-word, case-insensitive pattern for a skill keyword. Also accepts a
+ * plural "s"/"es" ("REST APIs", "webhooks", "WebSockets", "data pipelines"),
+ * except for short keywords and the everyday words in NO_PLURAL.
+ */
+export function skillPattern(skill: string): RegExp {
+  const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plural = skill.length >= 3 && !NO_PLURAL.has(skill) && !/s$/i.test(skill) ? "(?:e?s)?" : "";
+  return new RegExp(`(?<![a-z0-9])${escaped}${plural}(?![a-z0-9])`, "i");
+}
+
+export function extractResumeSkills(resumeText: string): string[] {
   const lower = resumeText.toLowerCase();
   const found = new Set<string>();
 
   for (const skill of KNOWN_SKILLS) {
     // Match whole word or phrase
-    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i");
+    const regex = skillPattern(skill);
     if (regex.test(lower)) found.add(skill);
   }
 
@@ -364,7 +391,7 @@ function extractResumeSkills(resumeText: string): string[] {
 
 // ─── Step 4b: Extract job requirements from description (CODE — FREE) ─────────
 
-function extractJobRequirementsFromCode(description: string): JobRequirements {
+export function extractJobRequirementsFromCode(description: string): JobRequirements {
   const text = description.toLowerCase();
   const skills = new Set<string>();
   const mustHave: string[] = [];
@@ -373,8 +400,7 @@ function extractJobRequirementsFromCode(description: string): JobRequirements {
 
   // Extract all known skills from description
   for (const skill of KNOWN_SKILLS) {
-    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i");
+    const regex = skillPattern(skill);
     if (regex.test(text)) skills.add(skill);
   }
 
@@ -394,8 +420,7 @@ function extractJobRequirementsFromCode(description: string): JobRequirements {
   // match scores for jobs that just don't follow that formatting. Instead
   // unclear skills go into `ambiguous`, weighted partially in preScoreMatch.
   for (const skill of skills) {
-    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i");
+    const regex = skillPattern(skill);
     if (preferredSection && regex.test(preferredSection)) {
       niceToHave.push(skill);
     } else if (requiredSection && regex.test(requiredSection)) {
@@ -559,7 +584,7 @@ async function extractAllJobRequirements(
 
 // ─── Step 5: Code-based pre-scoring (filter bad matches before OpenAI) ────────
 
-function preScoreMatch(
+export function preScoreMatch(
   resumeSkills: string[],
   jobReqs: JobRequirements,
   candidateYearsExperience: number = 0
@@ -621,7 +646,7 @@ function preScoreMatch(
 
 // ─── Step 6: Send only TOP matched jobs to OpenAI for final scoring ───────────
 
-async function analyzeWithAI(
+export async function analyzeWithAI(
   jobs: NormalizedJob[],
   jobRequirements: JobRequirements[],
   resumeSkills: string[],
@@ -793,7 +818,7 @@ Return ONLY raw JSON:
 
 // ─── Step 7: Rank + compute gap score ────────────────────────────────────────
 
-function rankAndScore(aiJobs: AIJobResult[]): {
+export function rankAndScore(aiJobs: AIJobResult[]): {
   topJobs: ParsedJob[];
   aggregatedSkills: AggregatedSkills;
   missingSkillsList: string[];
