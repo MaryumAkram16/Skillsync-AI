@@ -1,0 +1,1292 @@
+{
+  "_about": "Fictional resumes and job postings with human labels for evaluating SkillSync's code-based matching (services/parserService.ts). Labels describe what a reviewer would extract or judge, independent of what the code does. Skills use the canonical names from KNOWN_SKILLS; expected_years null means debatable, so not scored.",
+  "resumes": [
+    {
+      "id": "R01",
+      "kind": "student, ML",
+      "expected_years": 0,
+      "text": "Final-year BS Computer Science student (2022 – 2026) at a university in Lahore. Projects: a sentiment classifier with scikit-learn and pandas, and an image classifier in PyTorch. Comfortable with Python, NumPy, Matplotlib and SQL. Currently pursuing internships in machine learning.",
+      "expected_skills": [
+        "python",
+        "scikit-learn",
+        "pandas",
+        "pytorch",
+        "numpy",
+        "matplotlib",
+        "sql",
+        "machine learning"
+      ]
+    },
+    {
+      "id": "R02",
+      "kind": "junior frontend",
+      "expected_years": 1,
+      "text": "Frontend developer with 1 year of experience building React and Next.js apps in TypeScript. UI styling with Tailwind, state management with Redux, deployments on Vercel. Integrated REST APIs from a Node backend.",
+      "expected_skills": [
+        "react",
+        "next.js",
+        "typescript",
+        "tailwind",
+        "redux",
+        "vercel",
+        "rest api",
+        "node.js"
+      ]
+    },
+    {
+      "id": "R03",
+      "kind": "mid backend, Python",
+      "expected_years": 4,
+      "text": "Backend engineer, 4 years of experience. Built FastAPI and Django services on PostgreSQL and Redis, with Celery for background jobs. Docker, Kubernetes and GitHub Actions CI/CD on AWS.",
+      "expected_skills": [
+        "fastapi",
+        "django",
+        "postgresql",
+        "redis",
+        "celery",
+        "docker",
+        "kubernetes",
+        "github actions",
+        "ci/cd",
+        "aws"
+      ]
+    },
+    {
+      "id": "R04",
+      "kind": "senior data engineer",
+      "expected_years": 8,
+      "text": "Senior data engineer with 8 years of experience. Designs ETL pipelines with Airflow, Spark and Kafka, and models data in dbt on Snowflake and BigQuery. Python and SQL daily. Mentors juniors and leads cross-functional projects.",
+      "expected_skills": [
+        "etl",
+        "airflow",
+        "spark",
+        "kafka",
+        "dbt",
+        "snowflake",
+        "bigquery",
+        "python",
+        "sql",
+        "cross-functional"
+      ]
+    },
+    {
+      "id": "R05",
+      "kind": "junior AI engineer",
+      "expected_years": 2,
+      "text": "AI engineer, 2 years of experience shipping LLM apps. RAG pipelines with LangChain and pgvector, OpenAI and Gemini APIs, prompt engineering and model evaluation. FastAPI backends deployed with Docker on GCP.",
+      "expected_skills": [
+        "llm",
+        "rag",
+        "langchain",
+        "pgvector",
+        "openai",
+        "gemini",
+        "prompt engineering",
+        "model evaluation",
+        "fastapi",
+        "docker",
+        "gcp"
+      ]
+    },
+    {
+      "id": "R06",
+      "kind": "career changer, analytics",
+      "expected_years": null,
+      "text": "Former high-school maths teacher (2015 – 2023) moving into data analytics. Completed a data analytics certificate: SQL, Tableau and Power BI dashboards, basic Python with pandas. Strong communication and stakeholder management.",
+      "expected_skills": [
+        "data analytics",
+        "sql",
+        "tableau",
+        "power bi",
+        "python",
+        "pandas",
+        "communication",
+        "stakeholder management"
+      ]
+    },
+    {
+      "id": "R07",
+      "kind": "mid DevOps",
+      "expected_years": 5,
+      "text": "DevOps Engineer, Cloudbase — Mar 2020 – Feb 2025. Terraform and Helm on Kubernetes, AWS (Lambda, DynamoDB), Jenkins and GitHub Actions pipelines, Linux and bash scripting. On call for production.",
+      "expected_skills": [
+        "terraform",
+        "helm",
+        "kubernetes",
+        "aws",
+        "lambda",
+        "dynamodb",
+        "jenkins",
+        "github actions",
+        "linux",
+        "bash"
+      ]
+    },
+    {
+      "id": "R08",
+      "kind": "staff full-stack",
+      "expected_years": 10,
+      "text": "Staff engineer with 10+ years of experience. Leads a team building a Node.js and TypeScript platform with React frontends, GraphQL APIs, PostgreSQL and Redis. Owns architecture and code review.",
+      "expected_skills": [
+        "node.js",
+        "typescript",
+        "react",
+        "graphql",
+        "postgresql",
+        "redis"
+      ]
+    },
+    {
+      "id": "R09",
+      "kind": "junior mobile",
+      "expected_years": 1,
+      "text": "Mobile developer, 1 year of experience with Flutter and Dart, plus some Kotlin. Firebase authentication and Firestore. Published two apps.",
+      "expected_skills": [
+        "dart",
+        "kotlin",
+        "firebase",
+        "firestore"
+      ]
+    },
+    {
+      "id": "R10",
+      "kind": "PhD, NLP",
+      "expected_years": null,
+      "text": "PhD candidate in NLP (2021 – present). Publications on transformers and BERT fine-tuning; experiments in PyTorch and Hugging Face. Teaching assistant for a deep learning course.",
+      "expected_skills": [
+        "nlp",
+        "transformers",
+        "bert",
+        "fine-tuning",
+        "pytorch",
+        "huggingface",
+        "deep learning"
+      ]
+    },
+    {
+      "id": "R11",
+      "kind": "mid automation",
+      "expected_years": 3,
+      "text": "Automation specialist, 3 years of experience. Builds n8n and Zapier workflows, webhooks and API integrations for e-commerce clients, plus Retell AI voice agents. Reports in HubSpot.",
+      "expected_skills": [
+        "n8n",
+        "zapier",
+        "webhook",
+        "api integration",
+        "retell",
+        "hubspot"
+      ]
+    },
+    {
+      "id": "R12",
+      "kind": "mid data scientist",
+      "expected_years": 3,
+      "text": "Data scientist with 3 years of experience in feature engineering, scikit-learn and XGBoost models, and A/B test analysis in Python and R. Dashboards in Looker.",
+      "expected_skills": [
+        "feature engineering",
+        "scikit-learn",
+        "python",
+        "r",
+        "looker"
+      ]
+    },
+    {
+      "id": "R13",
+      "kind": "graduate web developer",
+      "expected_years": 0,
+      "text": "Junior web developer (fresh graduate). JavaScript, HTML and CSS; small Express backends with MongoDB. Learning Docker.",
+      "expected_skills": [
+        "javascript",
+        "html",
+        "css",
+        "express",
+        "mongodb",
+        "docker"
+      ]
+    },
+    {
+      "id": "R14",
+      "kind": "senior cloud architect",
+      "expected_years": 12,
+      "text": "Cloud architect with 12 years of experience across Azure and AWS. Designs serverless systems (Azure Functions, Lambda) with Terraform and Kubernetes, and Azure OpenAI integrations. Strong stakeholder management and project management.",
+      "expected_skills": [
+        "azure",
+        "aws",
+        "serverless",
+        "lambda",
+        "terraform",
+        "kubernetes",
+        "azure openai",
+        "stakeholder management",
+        "project management"
+      ]
+    },
+    {
+      "id": "R15",
+      "kind": "mid Java backend",
+      "expected_years": 5,
+      "text": "Java developer, 5 years of experience with Spring Boot microservices, Kafka, MySQL and Docker, in an Agile Scrum team.",
+      "expected_skills": [
+        "java",
+        "kafka",
+        "mysql",
+        "docker",
+        "agile",
+        "scrum"
+      ]
+    },
+    {
+      "id": "R16",
+      "kind": "career changer, marketing to AI",
+      "expected_years": null,
+      "text": "Digital marketer (2018 – 2024) learning AI automation: built a GPT-4 chatbot with the OpenAI API and n8n, and SEO reports with Python. Experienced with Google Ads, Meta Ads and HubSpot.",
+      "expected_skills": [
+        "gpt",
+        "openai",
+        "n8n",
+        "seo",
+        "python",
+        "google ads",
+        "meta ads",
+        "hubspot"
+      ]
+    },
+    {
+      "id": "R17",
+      "kind": "junior Python backend",
+      "expected_years": 1,
+      "text": "Python developer with 1 year of experience: Flask REST APIs, SQLite and PostgreSQL, pytest. Basic Docker.",
+      "expected_skills": [
+        "python",
+        "flask",
+        "rest api",
+        "sqlite",
+        "postgresql",
+        "docker"
+      ]
+    },
+    {
+      "id": "R18",
+      "kind": "senior ML engineer",
+      "expected_years": 7,
+      "text": "Senior ML engineer, 7 years of experience. Productionised deep learning models with TensorFlow and PyTorch, MLOps on Kubernetes, model evaluation, and quantization for faster inference.",
+      "expected_skills": [
+        "deep learning",
+        "tensorflow",
+        "pytorch",
+        "mlops",
+        "kubernetes",
+        "model evaluation",
+        "quantization",
+        "inference"
+      ]
+    },
+    {
+      "id": "R19",
+      "kind": "mid real-time voice",
+      "expected_years": 4,
+      "text": "Real-time systems engineer, 4 years of experience with WebRTC, WebSockets and Twilio voice; Node.js services on AWS.",
+      "expected_skills": [
+        "real-time",
+        "webrtc",
+        "websocket",
+        "twilio",
+        "node.js",
+        "aws"
+      ]
+    },
+    {
+      "id": "R20",
+      "kind": "junior data analyst",
+      "expected_years": 2,
+      "text": "Data analyst, 2 years of experience. SQL and Power BI, data analysis for retail sales, some Python with pandas.",
+      "expected_skills": [
+        "sql",
+        "power bi",
+        "data analysis",
+        "python",
+        "pandas"
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "id": "J01",
+      "title": "Machine Learning Intern",
+      "expected_years": 0,
+      "text": "Requirements: currently enrolled in a computer science degree; Python, pandas and scikit-learn; basic SQL. Nice to have: PyTorch or TensorFlow.",
+      "expected_skills": [
+        "python",
+        "pandas",
+        "scikit-learn",
+        "sql",
+        "pytorch",
+        "tensorflow"
+      ],
+      "expected_must_have": [
+        "python",
+        "pandas",
+        "scikit-learn",
+        "sql"
+      ],
+      "expected_nice_to_have": [
+        "pytorch",
+        "tensorflow"
+      ]
+    },
+    {
+      "id": "J02",
+      "title": "Junior Frontend Developer",
+      "expected_years": 1,
+      "text": "We're hiring a junior frontend developer. Must have: React, TypeScript and CSS. Preferred: Next.js, Tailwind, and experience deploying on Vercel. 1+ years of experience.",
+      "expected_skills": [
+        "react",
+        "typescript",
+        "css",
+        "next.js",
+        "tailwind",
+        "vercel"
+      ],
+      "expected_must_have": [
+        "react",
+        "typescript",
+        "css"
+      ],
+      "expected_nice_to_have": [
+        "next.js",
+        "tailwind",
+        "vercel"
+      ]
+    },
+    {
+      "id": "J03",
+      "title": "Senior Backend Engineer (Python)",
+      "expected_years": 6,
+      "text": "Required: 6+ years of experience building Python services with FastAPI or Django, PostgreSQL, Redis, Docker and Kubernetes on AWS. Nice to have: Celery, Terraform.",
+      "expected_skills": [
+        "python",
+        "fastapi",
+        "django",
+        "postgresql",
+        "redis",
+        "docker",
+        "kubernetes",
+        "aws",
+        "celery",
+        "terraform"
+      ],
+      "expected_must_have": [
+        "python",
+        "fastapi",
+        "django",
+        "postgresql",
+        "redis",
+        "docker",
+        "kubernetes",
+        "aws"
+      ],
+      "expected_nice_to_have": [
+        "celery",
+        "terraform"
+      ]
+    },
+    {
+      "id": "J04",
+      "title": "Backend Engineer",
+      "expected_years": 3,
+      "text": "What you'll do: build Django REST APIs on Postgres, run background jobs with Celery, and ship with Docker and GitHub Actions. You have 3+ years of experience.",
+      "expected_skills": [
+        "django",
+        "rest api",
+        "postgresql",
+        "celery",
+        "docker",
+        "github actions"
+      ]
+    },
+    {
+      "id": "J05",
+      "title": "Senior Data Engineer",
+      "expected_years": 7,
+      "text": "Requirements: 7+ years of experience with Spark, Kafka and Airflow; strong SQL and Python; dbt and Snowflake preferred.",
+      "expected_skills": [
+        "spark",
+        "kafka",
+        "airflow",
+        "sql",
+        "python",
+        "dbt",
+        "snowflake"
+      ]
+    },
+    {
+      "id": "J06",
+      "title": "AI Engineer (LLM)",
+      "expected_years": 2,
+      "text": "Required: 2+ years of experience building LLM applications with LangChain or LlamaIndex, RAG with a vector database (pgvector, Pinecone), prompt engineering and Python. Preferred: model evaluation, FastAPI, GCP.",
+      "expected_skills": [
+        "llm",
+        "langchain",
+        "llamaindex",
+        "rag",
+        "vector database",
+        "pgvector",
+        "pinecone",
+        "prompt engineering",
+        "python",
+        "model evaluation",
+        "fastapi",
+        "gcp"
+      ],
+      "expected_must_have": [
+        "llm",
+        "langchain",
+        "llamaindex",
+        "rag",
+        "vector database",
+        "pgvector",
+        "pinecone",
+        "prompt engineering",
+        "python"
+      ],
+      "expected_nice_to_have": [
+        "model evaluation",
+        "fastapi",
+        "gcp"
+      ]
+    },
+    {
+      "id": "J07",
+      "title": "Senior ML Engineer",
+      "expected_years": 6,
+      "text": "Minimum qualifications: 6+ years of experience in machine learning; deep learning with PyTorch or TensorFlow; MLOps and Kubernetes. Preferred qualifications: quantization and inference optimisation.",
+      "expected_skills": [
+        "machine learning",
+        "deep learning",
+        "pytorch",
+        "tensorflow",
+        "mlops",
+        "kubernetes",
+        "quantization",
+        "inference"
+      ],
+      "expected_must_have": [
+        "machine learning",
+        "deep learning",
+        "pytorch",
+        "tensorflow",
+        "mlops",
+        "kubernetes"
+      ],
+      "expected_nice_to_have": [
+        "quantization",
+        "inference"
+      ]
+    },
+    {
+      "id": "J08",
+      "title": "DevOps Engineer",
+      "expected_years": 4,
+      "text": "Must have: 4+ years of experience with Terraform, Kubernetes and Helm, AWS, Jenkins or GitHub Actions, and Linux. Bonus: DynamoDB, Lambda.",
+      "expected_skills": [
+        "terraform",
+        "kubernetes",
+        "helm",
+        "aws",
+        "jenkins",
+        "github actions",
+        "linux",
+        "dynamodb",
+        "lambda"
+      ],
+      "expected_must_have": [
+        "terraform",
+        "kubernetes",
+        "helm",
+        "aws",
+        "jenkins",
+        "github actions",
+        "linux"
+      ],
+      "expected_nice_to_have": [
+        "dynamodb",
+        "lambda"
+      ]
+    },
+    {
+      "id": "J09",
+      "title": "Data Analyst (Entry Level)",
+      "expected_years": 0,
+      "text": "Entry-level data analyst. You'll build Power BI and Tableau dashboards, write SQL, and make sure stakeholders get clear answers. Python is a plus.",
+      "expected_skills": [
+        "power bi",
+        "tableau",
+        "sql",
+        "python"
+      ]
+    },
+    {
+      "id": "J10",
+      "title": "Automation Specialist",
+      "expected_years": 2,
+      "text": "Required: 2+ years of experience building n8n or Zapier workflows, webhooks and API integrations; HubSpot or another CRM. Nice to have: Retell AI voice agents.",
+      "expected_skills": [
+        "n8n",
+        "zapier",
+        "webhook",
+        "api integration",
+        "hubspot",
+        "crm",
+        "retell"
+      ],
+      "expected_must_have": [
+        "n8n",
+        "zapier",
+        "webhook",
+        "api integration",
+        "hubspot",
+        "crm"
+      ],
+      "expected_nice_to_have": [
+        "retell"
+      ]
+    },
+    {
+      "id": "J11",
+      "title": "Java Backend Developer",
+      "expected_years": 4,
+      "text": "Required: 4+ years of experience with Java, Spring Boot, Kafka and MySQL; Docker; working in an Agile team. Preferred: Kubernetes.",
+      "expected_skills": [
+        "java",
+        "kafka",
+        "mysql",
+        "docker",
+        "agile",
+        "kubernetes"
+      ],
+      "expected_must_have": [
+        "java",
+        "kafka",
+        "mysql",
+        "docker",
+        "agile"
+      ],
+      "expected_nice_to_have": [
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "J12",
+      "title": "Flutter Developer",
+      "expected_years": 1,
+      "text": "We need a Flutter developer: Dart, Firebase and Firestore, and some Kotlin for native modules. 1+ years of experience.",
+      "expected_skills": [
+        "dart",
+        "firebase",
+        "firestore",
+        "kotlin"
+      ]
+    },
+    {
+      "id": "J13",
+      "title": "Cloud Architect",
+      "expected_years": 10,
+      "text": "Required: 10+ years of experience designing on Azure and AWS; serverless (Azure Functions, Lambda); Terraform; Azure OpenAI. Excellent stakeholder management.",
+      "expected_skills": [
+        "azure",
+        "aws",
+        "serverless",
+        "lambda",
+        "terraform",
+        "azure openai",
+        "stakeholder management"
+      ],
+      "expected_must_have": [
+        "azure",
+        "aws",
+        "serverless",
+        "lambda",
+        "terraform",
+        "azure openai",
+        "stakeholder management"
+      ],
+      "expected_nice_to_have": []
+    },
+    {
+      "id": "J14",
+      "title": "Full-stack Engineer",
+      "expected_years": 5,
+      "text": "Requirements: 5+ years of experience with Node.js, TypeScript, React and GraphQL, plus PostgreSQL. We go fast and value ownership.",
+      "expected_skills": [
+        "node.js",
+        "typescript",
+        "react",
+        "graphql",
+        "postgresql"
+      ]
+    },
+    {
+      "id": "J15",
+      "title": "Real-time Voice Engineer",
+      "expected_years": 3,
+      "text": "Required: 3+ years of experience with WebRTC, WebSockets and Twilio; Node.js on AWS. Preferred: Retell or other voice AI platforms.",
+      "expected_skills": [
+        "webrtc",
+        "websocket",
+        "twilio",
+        "node.js",
+        "aws",
+        "retell"
+      ],
+      "expected_must_have": [
+        "webrtc",
+        "websocket",
+        "twilio",
+        "node.js",
+        "aws"
+      ],
+      "expected_nice_to_have": [
+        "retell"
+      ]
+    },
+    {
+      "id": "J16",
+      "title": "Junior Python Developer",
+      "expected_years": 0,
+      "text": "Junior Python developer. Required: Python, Flask or FastAPI, SQL, and REST API design. Nice to have: Docker.",
+      "expected_skills": [
+        "python",
+        "flask",
+        "fastapi",
+        "sql",
+        "rest api",
+        "docker"
+      ],
+      "expected_must_have": [
+        "python",
+        "flask",
+        "fastapi",
+        "sql",
+        "rest api"
+      ],
+      "expected_nice_to_have": [
+        "docker"
+      ]
+    },
+    {
+      "id": "J17",
+      "title": "NLP Research Scientist",
+      "expected_years": 0,
+      "text": "Minimum qualifications: PhD in NLP or a related field; publications on transformers; PyTorch and Hugging Face. Preferred qualifications: experience fine-tuning BERT-family models.",
+      "expected_skills": [
+        "nlp",
+        "transformers",
+        "pytorch",
+        "huggingface",
+        "fine-tuning",
+        "bert"
+      ],
+      "expected_must_have": [
+        "nlp",
+        "transformers",
+        "pytorch",
+        "huggingface"
+      ],
+      "expected_nice_to_have": [
+        "fine-tuning",
+        "bert"
+      ]
+    },
+    {
+      "id": "J18",
+      "title": "Marketing AI Specialist",
+      "expected_years": 2,
+      "text": "Help our marketing team use AI: GPT-4 and the OpenAI API, n8n automations, SEO, and Google Ads and Meta Ads reporting in HubSpot. 2+ years of experience in digital marketing.",
+      "expected_skills": [
+        "gpt",
+        "openai",
+        "n8n",
+        "seo",
+        "google ads",
+        "meta ads",
+        "hubspot"
+      ]
+    },
+    {
+      "id": "J19",
+      "title": "Senior Data Scientist",
+      "expected_years": 6,
+      "text": "Required: 6+ years of experience; feature engineering, scikit-learn, Python and R; experimentation and A/B testing. Preferred: Looker, Spark.",
+      "expected_skills": [
+        "feature engineering",
+        "scikit-learn",
+        "python",
+        "r",
+        "looker",
+        "spark"
+      ],
+      "expected_must_have": [
+        "feature engineering",
+        "scikit-learn",
+        "python",
+        "r"
+      ],
+      "expected_nice_to_have": [
+        "looker",
+        "spark"
+      ]
+    },
+    {
+      "id": "J20",
+      "title": "Frontend Engineer (Vue)",
+      "expected_years": 3,
+      "text": "Required: 3+ years of experience with Vue and JavaScript, HTML and CSS. Nice to have: TypeScript, Vite.",
+      "expected_skills": [
+        "vue",
+        "javascript",
+        "html",
+        "css",
+        "typescript",
+        "vite"
+      ],
+      "expected_must_have": [
+        "vue",
+        "javascript",
+        "html",
+        "css"
+      ],
+      "expected_nice_to_have": [
+        "typescript",
+        "vite"
+      ]
+    },
+    {
+      "id": "J21",
+      "title": "Senior Site Reliability Engineer",
+      "expected_years": 8,
+      "text": "Required: 8+ years of experience running Kubernetes in production, Linux, Prometheus, Terraform and GCP; strong bash scripting. Preferred: Go.",
+      "expected_skills": [
+        "kubernetes",
+        "linux",
+        "terraform",
+        "gcp",
+        "bash",
+        "go"
+      ],
+      "expected_must_have": [
+        "kubernetes",
+        "linux",
+        "terraform",
+        "gcp",
+        "bash"
+      ],
+      "expected_nice_to_have": [
+        "go"
+      ]
+    },
+    {
+      "id": "J22",
+      "title": "AI Agent Developer",
+      "expected_years": 3,
+      "text": "You will build AI agents and multi-agent systems with LangGraph and the OpenAI Agents SDK, connect tools over MCP, and evaluate them. 3+ years of experience with Python.",
+      "expected_skills": [
+        "ai agents",
+        "multi-agent",
+        "langgraph",
+        "openai",
+        "agent sdk",
+        "mcp",
+        "python"
+      ]
+    },
+    {
+      "id": "J23",
+      "title": "Junior Backend Developer (Node)",
+      "expected_years": 0,
+      "text": "Junior backend developer: Express and MongoDB, JavaScript. You should express ideas clearly in English. Docker is a plus.",
+      "expected_skills": [
+        "express",
+        "mongodb",
+        "javascript",
+        "docker"
+      ]
+    },
+    {
+      "id": "J24",
+      "title": "Product Data Analyst",
+      "expected_years": 3,
+      "text": "Requirements: 3+ years of experience in data analysis with SQL and Looker; Python preferred; strong communication.",
+      "expected_skills": [
+        "data analysis",
+        "sql",
+        "looker",
+        "python",
+        "communication"
+      ]
+    },
+    {
+      "id": "J25",
+      "title": "Embedded C++ Engineer",
+      "expected_years": 5,
+      "text": "Required: 5+ years of experience in C++ on embedded Linux; RTOS experience. Preferred: Rust.",
+      "expected_skills": [
+        "c++",
+        "linux",
+        "rust"
+      ],
+      "expected_must_have": [
+        "c++",
+        "linux"
+      ],
+      "expected_nice_to_have": [
+        "rust"
+      ]
+    },
+    {
+      "id": "J26",
+      "title": "Salesforce Administrator",
+      "expected_years": 3,
+      "text": "Required: 3+ years of experience administering Salesforce and Marketo; CRM data hygiene and reporting. Preferred: HubSpot.",
+      "expected_skills": [
+        "salesforce",
+        "marketo",
+        "crm",
+        "hubspot"
+      ],
+      "expected_must_have": [
+        "salesforce",
+        "marketo",
+        "crm"
+      ],
+      "expected_nice_to_have": [
+        "hubspot"
+      ]
+    },
+    {
+      "id": "J27",
+      "title": "Graduate Software Engineer",
+      "expected_years": 0,
+      "text": "Graduate scheme for recent graduates. You'll rotate across teams using Python, JavaScript and SQL, with training in Git and Docker. No prior experience needed.",
+      "expected_skills": [
+        "python",
+        "javascript",
+        "sql",
+        "docker"
+      ]
+    },
+    {
+      "id": "J28",
+      "title": "Computer Vision Engineer",
+      "expected_years": 4,
+      "text": "Required: 4+ years of experience in computer vision with PyTorch, OpenCV and NumPy, and deploying models for inference. Preferred: quantization.",
+      "expected_skills": [
+        "computer vision",
+        "pytorch",
+        "numpy",
+        "inference",
+        "quantization"
+      ],
+      "expected_must_have": [
+        "computer vision",
+        "pytorch",
+        "numpy",
+        "inference"
+      ],
+      "expected_nice_to_have": [
+        "quantization"
+      ]
+    },
+    {
+      "id": "J29",
+      "title": "Data Platform Engineer",
+      "expected_years": 4,
+      "text": "Build data pipelines with Spark and Kafka on GCP and BigQuery. 4+ years of experience. Nice to have: Airflow, dbt.",
+      "expected_skills": [
+        "data pipeline",
+        "spark",
+        "kafka",
+        "gcp",
+        "bigquery",
+        "airflow",
+        "dbt"
+      ]
+    },
+    {
+      "id": "J30",
+      "title": "iOS Developer",
+      "expected_years": 3,
+      "text": "Required: 3+ years of experience with Swift and iOS, and REST API integration. Preferred: Firebase.",
+      "expected_skills": [
+        "swift",
+        "rest api",
+        "api integration",
+        "firebase"
+      ],
+      "expected_must_have": [
+        "swift",
+        "rest api",
+        "api integration"
+      ],
+      "expected_nice_to_have": [
+        "firebase"
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "resume": "R01",
+      "job": "J01",
+      "label": "strong"
+    },
+    {
+      "resume": "R01",
+      "job": "J27",
+      "label": "partial"
+    },
+    {
+      "resume": "R01",
+      "job": "J09",
+      "label": "partial"
+    },
+    {
+      "resume": "R01",
+      "job": "J07",
+      "label": "poor"
+    },
+    {
+      "resume": "R01",
+      "job": "J28",
+      "label": "poor"
+    },
+    {
+      "resume": "R02",
+      "job": "J02",
+      "label": "strong"
+    },
+    {
+      "resume": "R02",
+      "job": "J20",
+      "label": "partial"
+    },
+    {
+      "resume": "R02",
+      "job": "J14",
+      "label": "poor"
+    },
+    {
+      "resume": "R02",
+      "job": "J25",
+      "label": "poor"
+    },
+    {
+      "resume": "R03",
+      "job": "J04",
+      "label": "strong"
+    },
+    {
+      "resume": "R03",
+      "job": "J03",
+      "label": "partial"
+    },
+    {
+      "resume": "R03",
+      "job": "J16",
+      "label": "partial"
+    },
+    {
+      "resume": "R03",
+      "job": "J25",
+      "label": "poor"
+    },
+    {
+      "resume": "R03",
+      "job": "J26",
+      "label": "poor"
+    },
+    {
+      "resume": "R04",
+      "job": "J05",
+      "label": "strong"
+    },
+    {
+      "resume": "R04",
+      "job": "J29",
+      "label": "strong"
+    },
+    {
+      "resume": "R04",
+      "job": "J19",
+      "label": "partial"
+    },
+    {
+      "resume": "R04",
+      "job": "J02",
+      "label": "poor"
+    },
+    {
+      "resume": "R05",
+      "job": "J06",
+      "label": "strong"
+    },
+    {
+      "resume": "R05",
+      "job": "J22",
+      "label": "partial"
+    },
+    {
+      "resume": "R05",
+      "job": "J18",
+      "label": "poor"
+    },
+    {
+      "resume": "R05",
+      "job": "J07",
+      "label": "poor"
+    },
+    {
+      "resume": "R06",
+      "job": "J09",
+      "label": "strong"
+    },
+    {
+      "resume": "R06",
+      "job": "J24",
+      "label": "partial"
+    },
+    {
+      "resume": "R06",
+      "job": "J03",
+      "label": "poor"
+    },
+    {
+      "resume": "R07",
+      "job": "J08",
+      "label": "strong"
+    },
+    {
+      "resume": "R07",
+      "job": "J21",
+      "label": "partial"
+    },
+    {
+      "resume": "R07",
+      "job": "J13",
+      "label": "poor"
+    },
+    {
+      "resume": "R08",
+      "job": "J14",
+      "label": "strong"
+    },
+    {
+      "resume": "R08",
+      "job": "J20",
+      "label": "partial"
+    },
+    {
+      "resume": "R08",
+      "job": "J02",
+      "label": "partial"
+    },
+    {
+      "resume": "R08",
+      "job": "J12",
+      "label": "poor"
+    },
+    {
+      "resume": "R09",
+      "job": "J12",
+      "label": "strong"
+    },
+    {
+      "resume": "R09",
+      "job": "J30",
+      "label": "partial"
+    },
+    {
+      "resume": "R09",
+      "job": "J05",
+      "label": "poor"
+    },
+    {
+      "resume": "R10",
+      "job": "J17",
+      "label": "strong"
+    },
+    {
+      "resume": "R10",
+      "job": "J07",
+      "label": "partial"
+    },
+    {
+      "resume": "R10",
+      "job": "J09",
+      "label": "poor"
+    },
+    {
+      "resume": "R11",
+      "job": "J10",
+      "label": "strong"
+    },
+    {
+      "resume": "R11",
+      "job": "J18",
+      "label": "partial"
+    },
+    {
+      "resume": "R11",
+      "job": "J25",
+      "label": "poor"
+    },
+    {
+      "resume": "R12",
+      "job": "J19",
+      "label": "partial"
+    },
+    {
+      "resume": "R12",
+      "job": "J24",
+      "label": "partial"
+    },
+    {
+      "resume": "R12",
+      "job": "J01",
+      "label": "partial"
+    },
+    {
+      "resume": "R12",
+      "job": "J14",
+      "label": "poor"
+    },
+    {
+      "resume": "R13",
+      "job": "J23",
+      "label": "strong"
+    },
+    {
+      "resume": "R13",
+      "job": "J27",
+      "label": "strong"
+    },
+    {
+      "resume": "R13",
+      "job": "J20",
+      "label": "partial"
+    },
+    {
+      "resume": "R13",
+      "job": "J03",
+      "label": "poor"
+    },
+    {
+      "resume": "R14",
+      "job": "J13",
+      "label": "strong"
+    },
+    {
+      "resume": "R14",
+      "job": "J08",
+      "label": "partial"
+    },
+    {
+      "resume": "R14",
+      "job": "J01",
+      "label": "poor"
+    },
+    {
+      "resume": "R15",
+      "job": "J11",
+      "label": "strong"
+    },
+    {
+      "resume": "R15",
+      "job": "J03",
+      "label": "poor"
+    },
+    {
+      "resume": "R15",
+      "job": "J14",
+      "label": "poor"
+    },
+    {
+      "resume": "R16",
+      "job": "J18",
+      "label": "strong"
+    },
+    {
+      "resume": "R16",
+      "job": "J10",
+      "label": "partial"
+    },
+    {
+      "resume": "R16",
+      "job": "J21",
+      "label": "poor"
+    },
+    {
+      "resume": "R17",
+      "job": "J16",
+      "label": "strong"
+    },
+    {
+      "resume": "R17",
+      "job": "J04",
+      "label": "partial"
+    },
+    {
+      "resume": "R17",
+      "job": "J03",
+      "label": "poor"
+    },
+    {
+      "resume": "R18",
+      "job": "J07",
+      "label": "strong"
+    },
+    {
+      "resume": "R18",
+      "job": "J28",
+      "label": "partial"
+    },
+    {
+      "resume": "R18",
+      "job": "J01",
+      "label": "partial"
+    },
+    {
+      "resume": "R18",
+      "job": "J26",
+      "label": "poor"
+    },
+    {
+      "resume": "R19",
+      "job": "J15",
+      "label": "strong"
+    },
+    {
+      "resume": "R19",
+      "job": "J14",
+      "label": "partial"
+    },
+    {
+      "resume": "R19",
+      "job": "J20",
+      "label": "poor"
+    },
+    {
+      "resume": "R20",
+      "job": "J09",
+      "label": "strong"
+    },
+    {
+      "resume": "R20",
+      "job": "J24",
+      "label": "partial"
+    },
+    {
+      "resume": "R20",
+      "job": "J21",
+      "label": "poor"
+    }
+  ]
+}
