@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { aiClient, chatModel } from "./aiClient";
 
 interface ExtractedResumeDetails {
   jobTitle: string;
@@ -7,8 +7,7 @@ interface ExtractedResumeDetails {
 }
 
 export async function extractResumeDetails(resumeText: string): Promise<ExtractedResumeDetails> {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  const openai = new OpenAI({ apiKey });
+  const openai = aiClient();
 
   const systemPrompt = `You are an AI assistant that extracts facts from a resume. DO NOT INFER OR ESTIMATE.
 
@@ -31,7 +30,7 @@ Return ONLY a raw JSON object with no markdown or backticks. Schema:
 }`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature: 0.1,
     max_tokens: 500,
     messages: [

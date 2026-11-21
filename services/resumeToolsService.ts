@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { aiClient, chatModel, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey } from "./aiClient";
 
 interface ResumeToolsResult {
   success: boolean;
@@ -335,12 +335,12 @@ CRITICAL: Start with { and end with }. No markdown. No preamble.`;
 // ─── OpenAI caller ────────────────────────────────────────────────────────────
 
 async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
+  const apiKey = openaiApiKey();
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
 
-  const openai = new OpenAI({ apiKey });
+  const openai = aiClient();
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature: 0.3,
     max_tokens: 3000,
     messages: [

@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { scanMarket } from "./radarService";
 import { runWithConcurrency } from "./geminiRetry";
 import { getPersistentCache, setPersistentCache } from "./persistentCache";
@@ -13,6 +12,7 @@ import {
   VALID_MARKET_DEMAND,
 } from "./careerMentorHelpers";
 import { CareerMentorResult, EnhancedCareerRecommendation, DataQuality, SuccessStory } from "./careerMentorTypes";
+import { aiClient, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey } from "./aiClient";
 
 // ─── Persistent cache (Firestore, 24h TTL — falls back to in-memory if
 // Firestore is briefly unreachable; see persistentCache.ts for details) ──────
@@ -55,9 +55,9 @@ export async function getCareerMentorRecommendations(
     interests?: string[];
   }
 ): Promise<CareerMentorResult> {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
-  const openai = new OpenAI({ apiKey });
+  const apiKey = openaiApiKey();
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+  const openai = aiClient();
 
   const {
     educationLevel,

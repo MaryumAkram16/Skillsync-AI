@@ -1,9 +1,9 @@
 # Live evaluation of the AI job-scoring step on the labelled pairs in
-# evals/matching/dataset.json. Makes real OpenAI calls (one per resume, 20 in
+# evals/matching/dataset.json. Makes real model calls (one per resume, 20 in
 # total), so it never runs on pushes or pull requests.
 #
 # To run it:
-#   1. Add the repository secret OPENAI_API_KEY.
+#   1. Add the repository secret GEMINI_API_KEY (or OPENAI_API_KEY).
 #   2. Set the repository variable ENABLE_LIVE_EVAL to "true".
 #   3. Actions -> "Matching live evaluation" -> Run workflow.
 # The Markdown report is printed in the log and kept as a run artifact.
@@ -30,13 +30,15 @@ jobs:
       - name: Check for the API key
         id: creds
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          if [ -n "$OPENAI_API_KEY" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else
-            echo "::notice::OPENAI_API_KEY is not set; skipping the live evaluation."; echo "available=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -n "$GEMINI_API_KEY$OPENAI_API_KEY" ]; then echo "available=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::Neither GEMINI_API_KEY nor OPENAI_API_KEY is set; skipping the live evaluation."; echo "available=false" >> "$GITHUB_OUTPUT"; fi
       - name: Run the live evaluation
         if: steps.creds.outputs.available == 'true'
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npx tsx evals/matching/live.ts
       - name: Upload the report
