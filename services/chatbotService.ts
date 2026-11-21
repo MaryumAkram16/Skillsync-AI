@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, logAICall } from "./aiClient";
 
 /**
  * SkillSync Chatbot Service
@@ -273,19 +273,35 @@ Context: ${contextString}
 ${recentHistory ? `\nRecent conversation:\n${recentHistory}\n` : ""}
 User: ${message}`;
 
-    const result = await withGeminiRetry(
-    () =>
-      gemini.models.generateContent({
-        model: geminiModel(),
-        contents: prompt,
-        config: {
-          temperature: 0.6,
-          maxOutputTokens: 1000,
-          thinkingConfig: { thinkingBudget: 1000 },
-        },
-      }),
-    { label: "[Chatbot/Consultant]", maxRetries: 1 }
-  );
+  const start = Date.now();
+  let result;
+  try {
+    result = await withGeminiRetry(
+      () =>
+        gemini.models.generateContent({
+          model: geminiModel(),
+          contents: prompt,
+          config: {
+            temperature: 0.6,
+            maxOutputTokens: 1000,
+            thinkingConfig: { thinkingBudget: 1000 },
+          },
+        }),
+      { label: "[Chatbot/Consultant]", maxRetries: 1 }
+    );
+  } catch (err: any) {
+    logAICall({ provider: "gemini", model: geminiModel(), label: "chatbot-consultant", ms: Date.now() - start, error: String(err?.message ?? err).slice(0, 300) });
+    throw err;
+  }
+  const u = result.usageMetadata;
+  logAICall({
+    provider: "gemini",
+    model: geminiModel(),
+    label: "chatbot-consultant",
+    ms: Date.now() - start,
+    finish: result.candidates?.[0]?.finishReason ?? null,
+    usage: u && { prompt_tokens: u.promptTokenCount, completion_tokens: u.candidatesTokenCount, completion_tokens_details: { reasoning_tokens: u.thoughtsTokenCount } },
+  });
 
   const candidate = result.candidates?.[0];
   const text = candidate?.content?.parts?.map((p: any) => p.text || "").join("").trim();
@@ -344,7 +360,9 @@ export async function askChatbot(payload: ChatbotPayload): Promise<ChatbotRespon
     // Step 1: Classify intent (last user message is usually enough signal,
     // but a short trailing snippet of history helps disambiguate follow-ups
     // like "yes do that" or "what about for backend instead")
+    const t0 = Date.now();
     const { intent, confidence } = await classifyIntent(openai, message, payload.history);
+    const classifyMs = Date.now() - t0;
 
     // Step 2: Build context
     const contextString = buildContextString(payload, intent);
@@ -352,17 +370,22 @@ export async function askChatbot(payload: ChatbotPayload): Promise<ChatbotRespon
     // Step 3: Generate the response — open-ended consultant path for
     // GENERAL_INQUIRY (via Gemini), strict 2-sentence router for everything else.
     let rawOutput: string;
+    let path = CONSULTANT_INTENTS.has(intent) ? "consultant" : "router";
+    const t1 = Date.now();
     if (CONSULTANT_INTENTS.has(intent)) {
       try {
         rawOutput = await generateConsultantResponse(contextString, message, payload.history);
         if (!rawOutput) throw new Error("Empty consultant response");
       } catch (consultantErr) {
         console.warn("[Chatbot] Consultant path failed, falling back to router:", consultantErr);
+        path = "consultant->router";
         rawOutput = await generateResponse(openai, contextString, message, payload.history);
       }
     } else {
       rawOutput = await generateResponse(openai, contextString, message, payload.history);
     }
+
+    console.log(JSON.stringify({ level: "info", msg: "chatbot_timing", intent, path, classifyMs, respondMs: Date.now() - t1 }));
 
     // Step 4: Format and extract action link
     return formatResponse(rawOutput, intent, confidence);

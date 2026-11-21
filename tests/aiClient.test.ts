@@ -126,3 +126,44 @@ describe("aiClient", () => {
     expect(calls[0].body.max_tokens).toBe(300);
   });
 });
+
+describe("AI call logging", () => {
+  it("logs one line per call with duration, model, finish reason and thinking tokens, never the key", async () => {
+    process.env.GEMINI_API_KEY = "gemini-secret-key";
+    const lines: string[] = [];
+    const orig = console.log;
+    console.log = (s: string) => lines.push(s);
+    try {
+      const fetchWithUsage = (async () =>
+        new Response(
+          JSON.stringify({
+            id: "x", object: "chat.completion", created: 0, model: "m",
+            choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "hi" } }],
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, completion_tokens_details: { reasoning_tokens: 300 } },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )) as typeof fetch;
+      await aiClient({ fetch: fetchWithUsage }).chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: "hi" }] });
+    } finally {
+      console.log = orig;
+    }
+    const entry = JSON.parse(lines.find((l) => l.includes('"ai_call"'))!);
+    expect(entry).toMatchObject({ msg: "ai_call", provider: "gemini", model: DEFAULT_GEMINI_MODEL, finish: "stop", promptTokens: 10, outputTokens: 5, thinkingTokens: 300 });
+    expect(typeof entry.ms).toBe("number");
+    expect(lines.join("\n")).not.toContain("gemini-secret-key");
+  });
+
+  it("logs failures with the status and rethrows", async () => {
+    process.env.GEMINI_API_KEY = "g";
+    const warns: string[] = [];
+    const orig = console.warn;
+    console.warn = (s: string) => warns.push(s);
+    try {
+      const failing = (async () => new Response(JSON.stringify({ error: { message: "bad model" } }), { status: 400, headers: { "content-type": "application/json" } })) as typeof fetch;
+      await expect(aiClient({ fetch: failing }).chat.completions.create({ model: "x", messages: [] })).rejects.toThrow();
+    } finally {
+      console.warn = orig;
+    }
+    expect(JSON.parse(warns.find((w) => w.includes("ai_call_failed"))!)).toMatchObject({ provider: "gemini", status: 400 });
+  });
+});
