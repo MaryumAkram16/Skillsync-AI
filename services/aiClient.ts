@@ -56,6 +56,52 @@ export function toGeminiRequest(body: CreateBody): CreateBody {
   };
 }
 
+/** One structured log line per AI call, so slow or failing calls show up in the Vercel logs. */
+export function logAICall(entry: {
+  provider: AIProvider;
+  model: string;
+  ms: number;
+  label?: string;
+  finish?: string | null;
+  usage?: any;
+  error?: string;
+  status?: number;
+}): void {
+  const { usage, ...rest } = entry;
+  const line = {
+    level: entry.error ? "warn" : "info",
+    msg: entry.error ? "ai_call_failed" : "ai_call",
+    ...rest,
+    ...(usage
+      ? {
+          promptTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+          thinkingTokens: usage.completion_tokens_details?.reasoning_tokens,
+        }
+      : {}),
+  };
+  (entry.error ? console.warn : console.log)(JSON.stringify(line));
+}
+
+/** Wraps chat.completions.create so every call is timed and logged. */
+function instrument(client: OpenAI, provider: AIProvider, adapt: (body: CreateBody) => CreateBody): OpenAI {
+  const completions = client.chat.completions;
+  const create = completions.create.bind(completions);
+  completions.create = (async (body: CreateBody, options?: any) => {
+    const sent = adapt(body);
+    const start = Date.now();
+    try {
+      const res: any = await create(sent as any, options);
+      logAICall({ provider, model: sent.model, ms: Date.now() - start, finish: res?.choices?.[0]?.finish_reason, usage: res?.usage });
+      return res;
+    } catch (err: any) {
+      logAICall({ provider, model: sent.model, ms: Date.now() - start, status: err?.status, error: String(err?.message ?? err).slice(0, 300) });
+      throw err;
+    }
+  }) as any;
+  return client;
+}
+
 /**
  * An OpenAI SDK client for the active provider. Call sites use it exactly like
  * `new OpenAI({ apiKey })`. `fetch` is injectable for tests.
@@ -63,11 +109,9 @@ export function toGeminiRequest(body: CreateBody): CreateBody {
 export function aiClient(opts: { fetch?: typeof fetch } = {}): OpenAI {
   const provider = aiProvider();
   if (!provider) throw new Error(AI_KEY_MISSING);
-  if (provider === "openai") return new OpenAI({ apiKey: openaiApiKey(), fetch: opts.fetch });
-
+  if (provider === "openai") {
+    return instrument(new OpenAI({ apiKey: openaiApiKey(), fetch: opts.fetch }), "openai", (b) => b);
+  }
   const client = new OpenAI({ apiKey: geminiApiKey(), baseURL: GEMINI_OPENAI_BASE_URL, fetch: opts.fetch });
-  const completions = client.chat.completions;
-  const create = completions.create.bind(completions);
-  completions.create = ((body: CreateBody, options?: any) => create(toGeminiRequest(body) as any, options)) as any;
-  return client;
+  return instrument(client, "gemini", toGeminiRequest);
 }
