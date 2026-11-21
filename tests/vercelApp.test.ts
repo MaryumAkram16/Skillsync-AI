@@ -89,6 +89,24 @@ describe('firebaseCredential', () => {
     expect(firebaseCredential().constructor.name).toBe('ServiceAccountCredential');
   });
 
+  it('forgives a byte-order mark or surrounding quotes', () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT = '\uFEFF' + JSON.stringify(account);
+    expect(firebaseCredential().constructor.name).toBe('ServiceAccountCredential');
+    process.env.FIREBASE_SERVICE_ACCOUNT = `'${JSON.stringify(account)}'`;
+    expect(firebaseCredential().constructor.name).toBe('ServiceAccountCredential');
+  });
+
+  it('says what to paste when given a file name, without echoing it', () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT = 'my-project-firebase-adminsdk-SECRET.json';
+    expect(() => firebaseCredential()).toThrow(/whole contents of the key file/);
+    try { firebaseCredential(); } catch (e) { expect(String(e)).not.toContain('SECRET'); }
+  });
+
+  it('rejects JSON that is not a service-account key', () => {
+    process.env.FIREBASE_SERVICE_ACCOUNT = JSON.stringify({ apiKey: 'x', projectId: 'y' });
+    expect(() => firebaseCredential()).toThrow(/not a service-account key/);
+  });
+
   it('rejects an invalid value without echoing it', () => {
     process.env.FIREBASE_SERVICE_ACCOUNT = '{not json SECRET-VALUE';
     expect(() => firebaseCredential()).toThrow(/not valid service-account JSON/);

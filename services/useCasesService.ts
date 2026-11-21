@@ -3,6 +3,7 @@ import { withGeminiRetry } from "./geminiRetry";
 import { getPersistentCache, setPersistentCache } from "./persistentCache";
 import { singleFlight } from "./singleFlight";
 import { searchSerp, SerpResult } from "./serpClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
 
 // useCasesService.ts
 // Local service for finding real-world use cases and success stories.
@@ -188,7 +189,7 @@ Return format:
 
 // ─── AI caller — Gemini first, gpt-4o-mini fallback ─────────────────────────
 
-async function callGPT4o(system: string, user: string, apiKey: string): Promise<string> {
+async function callGPT4o(system: string, user: string): Promise<string> {
   const geminiKey = (process.env.USE_CASES_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_KEY || "").trim();
   if (process.env.USE_CASES_GEMINI_API_KEY) console.log("[UseCases] Using USE_CASES_GEMINI_API_KEY");
   else if (process.env.GEMINI_API_KEY) console.log("[UseCases] Using default GEMINI_API_KEY");
@@ -207,7 +208,7 @@ async function callGPT4o(system: string, user: string, apiKey: string): Promise<
       const result = await withGeminiRetry(
         () =>
           ai.models.generateContent({
-            model: "gemini-2.0-flash-thinking-exp",
+            model: geminiModel(),
             contents: `${system}\n\n${user}`,
             config: {
               temperature: 0.15,
@@ -232,27 +233,18 @@ async function callGPT4o(system: string, user: string, apiKey: string): Promise<
     }
   }
 
-  // Fallback: OpenAI gpt-4o-mini (was gpt-4o — downgraded to save ~20x cost)
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.15,
-      max_tokens: 6000,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
+  // Fallback: the provider-aware client (Gemini by default, OpenAI only if configured)
+  const completion = await aiClient().chat.completions.create({
+    model: chatModel(),
+    temperature: 0.15,
+    max_tokens: 6000,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
   });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
-  const d = await res.json();
-  return d.choices?.[0]?.message?.content ?? "";
+  return completion.choices[0]?.message?.content ?? "";
 }
 
 // ─── Safe JSON parser ─────────────────────────────────────────────────────────
@@ -337,10 +329,9 @@ export async function findUseCases(
 ): Promise<UseCasesResult> {
   const serpKey  = (process.env.SERP_API_KEY  || process.env.SERPAPI_KEY || "").trim();
   const serpKey2 = (process.env.SERP_API_KEY_2 || process.env.SERPAPI_KEY_2 || "").trim();
-  const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
 
   if (!serpKey && !serpKey2)   throw new Error("SERP_API_KEY or SERP_API_KEY_2 is not set in environment variables.");
-  if (!openaiKey) throw new Error("OPENAI_API_KEY is not set in environment variables.");
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
   if (!goal)      throw new Error("goal is required.");
 
   // Use primary key for cache lookup
@@ -429,10 +420,10 @@ ${JSON.stringify(finalResults.slice(0, 30), null, 2)}`;
   // inside callGPT4o) smooths this out without doubling latency the way a
   // fully sequential await would.
     // Deduplicate in-flight AI calls using singleFlight
-  const techCallPromise = singleFlight(`gpt4o-tech-${goal}-${level}-${userBackground}`, () => callGPT4o(EXTRACTOR_SYSTEM, techPrompt, openaiKey));
+  const techCallPromise = singleFlight(`gpt4o-tech-${goal}-${level}-${userBackground}`, () => callGPT4o(EXTRACTOR_SYSTEM, techPrompt));
   const nonTechCallPromise = new Promise<string>((resolve, reject) => {
     setTimeout(() => {
-      singleFlight(`gpt4o-nontech-${goal}-${level}-${userBackground}`, () => callGPT4o(EXTRACTOR_SYSTEM, nonTechPrompt, openaiKey)).then(resolve, reject);
+      singleFlight(`gpt4o-nontech-${goal}-${level}-${userBackground}`, () => callGPT4o(EXTRACTOR_SYSTEM, nonTechPrompt)).then(resolve, reject);
     }, 600);
   });
 

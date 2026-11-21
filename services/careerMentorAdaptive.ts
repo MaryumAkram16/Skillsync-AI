@@ -12,6 +12,7 @@ import {
   gradeQuizLocally,
 } from "./careerMentorQuizShared";
 import { QuizQuestion, BuiltProfile, AdaptiveSessionState, InterestWithProficiency } from "./careerMentorTypes";
+import { AI_KEY_MISSING } from "./aiClient";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ─── TIER 3: ADAPTIVE ASSESSMENT (multi-stage, performance-branched) ───────
@@ -103,7 +104,7 @@ export async function generateAssessmentStage1(
   // is no longer required as long as Gemini is configured. We still pass
   // `apiKey` through so the gemini-first fallback path works if Gemini
   // fails mid-flow and an OpenAI key happens to be available.
-  if (!apiKey && !geminiKey) throw new Error("No AI key available. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+  if (!apiKey && !geminiKey) throw new Error(AI_KEY_MISSING);
 
   const { perSkillRules, softSkillLines, educationBaseline, marketContext } =
     await buildAssessmentProfile(interests, educationLevel, country);
@@ -222,7 +223,7 @@ export async function analyzeStage1AndGenerateStage2(
 }> {
   const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
   const geminiKey = (process.env.CAREER_MENTOR_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_KEY || "").trim();
-  if (!apiKey && !geminiKey) throw new Error("No AI key available. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+  if (!apiKey && !geminiKey) throw new Error(AI_KEY_MISSING);
 
   const session = await getAdaptiveSession(userId);
   if (!session || !session.stage1Quiz?.length) {
@@ -366,7 +367,7 @@ export async function submitAdaptiveAssessment(
 ): Promise<any> {
   const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
   const geminiKey = (process.env.CAREER_MENTOR_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_KEY || "").trim();
-  if (!apiKey && !geminiKey) throw new Error("No AI key available. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+  if (!apiKey && !geminiKey) throw new Error(AI_KEY_MISSING);
 
   const session = await getAdaptiveSession(userId);
   if (!session || !session.stage1Quiz?.length) {

@@ -16,9 +16,9 @@
  * Token savings vs original: ~70-80% reduction in OpenAI usage
  */
 
-import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry, runWithConcurrency } from "./geminiRetry";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey } from "./aiClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -482,7 +482,7 @@ ${description.slice(0, 1500)}`;
     const result = await withGeminiRetry(
       () =>
         ai.models.generateContent({
-          model: "gemini-2.0-flash-thinking-exp",
+          model: geminiModel(),
           contents: prompt,
           config: {
             maxOutputTokens: 1500,
@@ -654,9 +654,9 @@ export async function analyzeWithAI(
   applicant: { role: string; country: string; jobType: string },
   candidateYearsExperience: number = 0
 ): Promise<AIJobResult[]> {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set.");
-  const openai = new OpenAI({ apiKey });
+  const apiKey = openaiApiKey();
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+  const openai = aiClient();
 
   // Pre-score all jobs with code — filter out poor matches before calling OpenAI
   const jobsWithPreScore = jobs.map((job, i) => ({
@@ -754,7 +754,7 @@ Return ONLY raw JSON:
 }`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature: 0.2,
     max_tokens: 2000,
     messages: [

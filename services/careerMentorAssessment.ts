@@ -1,9 +1,9 @@
-import OpenAI from "openai";
 import admin, { adminDb } from "./firebaseAdmin";
 import { callAI } from "./careerMentorAI";
 import { parseJsonResponse, deriveStrengths, deriveWeaknesses } from "./careerMentorHelpers";
 import { buildAssessmentProfile, generateAndValidateQuiz, gradeQuizLocally } from "./careerMentorQuizShared";
 import { InterestWithProficiency, QuizQuestion } from "./careerMentorTypes";
+import { aiClient, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey } from "./aiClient";
 
 /**
  * Atomically checks the assessment limit and increments the count in a single
@@ -40,8 +40,8 @@ export async function generateAssessment(
 ): Promise<{ quiz: QuizQuestion[] }> {
   await checkAndIncrementAssessmentLimit(userId);
 
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
+  const apiKey = openaiApiKey();
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
 
   const { perSkillRules, softSkillLines, educationBaseline, marketContext } =
     await buildAssessmentProfile(interests, educationLevel, country);
@@ -113,9 +113,9 @@ export async function submitAssessment(
   rawAnswers: string[],
   quiz: QuizQuestion[]
 ): Promise<any> {
-  const apiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set.");
-  const openai = new OpenAI({ apiKey });
+  const apiKey = openaiApiKey();
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+  const openai = aiClient();
 
   const { questionBreakdown, score, categoryScores } = gradeQuizLocally(quiz, rawAnswers);
 

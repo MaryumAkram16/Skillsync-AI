@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
 
 /**
  * Shared AI caller used by all three career-mentor features (quiz
@@ -45,7 +45,7 @@ async function callGemini(
   const result = await withGeminiRetry(
     () =>
       ai.models.generateContent({
-        model: "gemini-2.0-flash-thinking-exp",
+        model: geminiModel(),
         contents: `${systemPrompt}\n\n${userPrompt}`,
         config: {
           temperature,
@@ -74,10 +74,10 @@ async function callOpenAI(
   opts: AICallOptions
 ): Promise<string> {
   const { temperature = 0.3, maxTokens = 3000, jsonMode = true } = opts;
-  if (!openaiKey) throw new Error("No AI key available. Set GEMINI_API_KEY or OPENAI_API_KEY.");
-  const openai = new OpenAI({ apiKey: openaiKey });
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+  const openai = aiClient();
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature,
     seed: opts.seed ?? 42,
     max_tokens: maxTokens,

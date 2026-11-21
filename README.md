@@ -298,13 +298,13 @@ npx tsx evals/matching/run.ts
 
 ### Live (AI scoring step)
 
-`evals/matching/live.ts` sends each resume's labelled jobs through the OpenAI scoring step (`analyzeWithAI`, gpt-4o-mini) and reports how well its `matchScore` agrees with the labels: pairs ordered correctly, mean score per label, strong fits scored 70+, and poor fits scored below 50 (the prompt's own threshold). It makes one call per resume (20 in total) and refuses to run without `OPENAI_API_KEY`.
+`evals/matching/live.ts` sends each resume's labelled jobs through the AI scoring step (`analyzeWithAI`, on whichever provider `services/aiClient.ts` selects) and reports how well its `matchScore` agrees with the labels: pairs ordered correctly, mean score per label, strong fits scored 70+, and poor fits scored below 50 (the prompt's own threshold). It makes one call per resume (20 in total) and refuses to run without an AI key. The recorded result below was measured on gpt-4o-mini.
 
 ```bash
-OPENAI_API_KEY=... npx tsx evals/matching/live.ts
+GEMINI_API_KEY=... npx tsx evals/matching/live.ts
 ```
 
-In GitHub, it runs only when started manually (Actions → *Matching live evaluation*) with the `OPENAI_API_KEY` secret and the `ENABLE_LIVE_EVAL` variable set; the report is kept as a run artifact.
+In GitHub, it runs only when started manually (Actions → *Matching live evaluation*) with the `GEMINI_API_KEY` (or `OPENAI_API_KEY`) secret and the `ENABLE_LIVE_EVAL` variable set; the report is kept as a run artifact.
 
 | Model | Date | Pairs ordered correctly | Mean score, strong / partial / poor | Strong 70+ | Poor < 50 |
 |---|---|---|---|---|---|
@@ -377,10 +377,12 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
-# AI providers
+# AI providers — Gemini does all the AI work whenever GEMINI_API_KEY is set
 GEMINI_API_KEY=your_gemini_key
 CAREER_MENTOR_GEMINI_API_KEY=your_gemini_key      # optional, falls back to GEMINI_API_KEY
-OPENAI_API_KEY=your_openai_key
+GEMINI_MODEL=gemini-3.6-flash                     # optional, this is the default
+OPENAI_API_KEY=your_openai_key                    # optional, used only without a Gemini key
+AI_PROVIDER=                                      # optional: "openai" to force OpenAI
 
 # Job data
 RAPIDAPI_KEY=your_rapidapi_key

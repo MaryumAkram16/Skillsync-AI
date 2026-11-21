@@ -27,6 +27,7 @@ import { log } from "./logger";
 import { auditMiddleware } from "./auditMiddleware";
 import { validateResponse, isExplainPhaseResponse, isExplainGapResponse, isTrendExplainResponse } from "./apiSchemas";
 import { firebaseCredential } from "./services/firebaseCredential";
+import { aiClient, aiProvider, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./services/aiClient";
 
 // ── Firebase Admin SDK init (for server-side token verification) ──────────────
 if (!admin.apps || admin.apps.length === 0) {
@@ -176,6 +177,9 @@ export async function createApp(
 
     // Gemini key present
     checks.gemini = (process.env.GEMINI_API_KEY || process.env.CAREER_MENTOR_GEMINI_API_KEY) ? "configured" : "missing";
+    // Which AI provider and model serve chat completions (never the key itself)
+    const provider = aiProvider();
+    checks.ai = provider ? `${provider} (${chatModel()})` : "missing";
     // Supabase key present
     checks.supabase = process.env.SUPABASE_ANON_KEY ? "configured" : "missing";
 
@@ -446,7 +450,7 @@ Rules:
           httpOptions: { headers: { "User-Agent": "aistudio-build" } },
         });
         const result = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: geminiModel(),
           contents: prompt,
           config: {
             temperature: 0.4,
@@ -461,12 +465,10 @@ Rules:
         log.info("ExplainPhase: Gemini used");
       } catch (geminiErr: any) {
         log.warn("ExplainPhase: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
-        const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-        if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: openaiKey });
+        if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+        const openai = aiClient();
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: chatModel(),
           temperature: 0.4,
           max_tokens: 350,
           response_format: { type: "json_object" },
@@ -547,7 +549,7 @@ Rules:
           httpOptions: { headers: { "User-Agent": "aistudio-build" } },
         });
         const result = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: geminiModel(),
           contents: prompt,
           config: {
             temperature: 0.3,
@@ -559,12 +561,10 @@ Rules:
         log.info("ExplainGaps: Gemini used");
       } catch (geminiErr: any) {
         log.warn("ExplainGaps: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
-        const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-        if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: openaiKey });
+        if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+        const openai = aiClient();
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: chatModel(),
           temperature: 0.3,
           max_tokens: 300,
           messages: [
@@ -632,7 +632,7 @@ Rules:
           httpOptions: { headers: { "User-Agent": "aistudio-build" } },
         });
         const result = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: geminiModel(),
           contents: prompt,
           config: {
             temperature: 0.3,
@@ -646,12 +646,10 @@ Rules:
         log.info("ExplainSkillGap: Gemini used");
       } catch (geminiErr: any) {
         log.warn("ExplainSkillGap: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
-        const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-        if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: openaiKey });
+        if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+        const openai = aiClient();
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: chatModel(),
           temperature: 0.3,
           max_tokens: 250,
           response_format: { type: "json_object" },
@@ -725,7 +723,7 @@ Rules:
           httpOptions: { headers: { "User-Agent": "aistudio-build" } },
         });
         const result = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: geminiModel(),
           contents: prompt,
           config: {
             temperature: 0.3,
@@ -739,12 +737,10 @@ Rules:
         log.info("ExplainTrend: Gemini used");
       } catch (geminiErr: any) {
         log.warn("ExplainTrend: Gemini failed, falling back to OpenAI", { error: geminiErr.message });
-        const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
-        if (!openaiKey) throw new Error("No AI key available — set GEMINI_API_KEY or OPENAI_API_KEY");
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: openaiKey });
+        if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+        const openai = aiClient();
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: chatModel(),
           temperature: 0.3,
           max_tokens: 250,
           response_format: { type: "json_object" },

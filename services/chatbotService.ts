@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
 
 /**
  * SkillSync Chatbot Service
@@ -95,7 +96,7 @@ async function classifyIntent(
       .join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: chatModel(),
       temperature: 0.1,
       max_tokens: 150,
       messages: [
@@ -218,7 +219,7 @@ async function generateResponse(
   }));
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature: 0.7,
     max_tokens: 150,
     messages: [
@@ -275,7 +276,7 @@ User: ${message}`;
     const result = await withGeminiRetry(
     () =>
       gemini.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: geminiModel(),
         contents: prompt,
         config: {
           temperature: 0.6,
@@ -337,9 +338,8 @@ export async function askChatbot(payload: ChatbotPayload): Promise<ChatbotRespon
   }
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OPENAI_API_KEY is not set.");
-    const openai = new OpenAI({ apiKey });
+    if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
+    const openai = aiClient();
 
     // Step 1: Classify intent (last user message is usually enough signal,
     // but a short trailing snippet of history helps disambiguate follow-ups

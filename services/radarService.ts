@@ -11,7 +11,6 @@
  *  7. Cache result for 24h, return structured JSON { technicalSkills, softSkills, salaryIntel }
  */
 
-import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
 import { getPersistentCache, setPersistentCache } from "./persistentCache";
@@ -340,7 +339,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   const result = await withGeminiRetry(
     () =>
       ai.models.generateContent({
-        model: "gemini-2.0-flash-thinking-exp",
+        model: geminiModel(),
         contents: `${systemPrompt}\n\n${userPrompt}`,
         config: {
           temperature: 0.3,
@@ -366,10 +365,10 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   return text;
 }
 
-async function callOpenAI(systemPrompt: string, userPrompt: string, apiKey: string): Promise<string> {
-  const openai = new OpenAI({ apiKey });
+async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const openai = aiClient();
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: chatModel(),
     temperature: 0.3,
     max_tokens: 1200,
     messages: [
@@ -383,6 +382,7 @@ async function callOpenAI(systemPrompt: string, userPrompt: string, apiKey: stri
 // ─── Fallback: Fetch salary data from SerpAPI (for countries like Pakistan) with fallback key ─
 
 import { searchSerp } from "./serpClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
 
 async function fetchSalaryFromSerpAPI(role: string, country: string): Promise<{ min: number | null; max: number | null; currency: string; note: string } | null> {
     try {
@@ -471,7 +471,6 @@ async function fetchSalaryFromSerpAPI(role: string, country: string): Promise<{ 
 
 async function analyseWithAI(jobsText: string, role: string, country: string): Promise<RadarResult> {
   const geminiKey = radarGeminiKey;
-  const openaiKey = (process.env.OPENAI_API_KEY || process.env.VITE_OPEN_AI_KEY || "").trim();
 
   const systemPrompt = AI_SYSTEM_PROMPT(role, country);
   const userPrompt = jobsText || "No live job data available. Please provide an AI estimate.";
@@ -488,9 +487,9 @@ async function analyseWithAI(jobsText: string, role: string, country: string): P
   }
 
   // Fallback: OpenAI
-  if (!openaiKey) throw new Error("No AI key available. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+  if (!aiKeyAvailable()) throw new Error(AI_KEY_MISSING);
   console.log(`[Radar] OpenAI fallback used for: ${role} in ${country}`);
-  const raw = await callOpenAI(systemPrompt, userPrompt, openaiKey);
+  const raw = await callOpenAI(systemPrompt, userPrompt);
   return parseAIResponse(raw);
 }
 
