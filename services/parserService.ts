@@ -673,7 +673,7 @@ export async function analyzeWithAI(
     `[Parser] Pre-scores: ${jobsWithPreScore.map(j => `${j.job.job_title}=${j.preScore}`).join(", ")}`
   );
   console.log(
-    `[Parser] Sending top ${topCandidates.length} to OpenAI (candidate experience: ${candidateYearsExperience}yr, pre-score >= ${topCandidates[topCandidates.length-1]?.preScore || 0})`
+    `[Parser] Sending top ${topCandidates.length} to the AI (candidate experience: ${candidateYearsExperience}yr, pre-score >= ${topCandidates[topCandidates.length-1]?.preScore || 0})`
   );
 
   // Build a LEAN prompt — structured data only, no raw descriptions
