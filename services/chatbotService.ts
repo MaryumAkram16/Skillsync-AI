@@ -67,6 +67,65 @@ const VALID_INTENTS = [
   "GENERAL_INQUIRY", "FALLBACK",
 ];
 
+/** What each intent means, so the classifier isn't guessing from bare names. */
+export const INTENT_GUIDE = `- PARSER_HELP: find or match JOBS using their resume (upload a resume, "jobs for my resume", "which jobs fit me")
+- RESUME_TOOLS_HELP: improve or rewrite their resume itself, or write a cover letter (not finding jobs)
+- RADAR_HELP: which skills or salaries are in demand for a role right now
+- GAPMAP_EXPLAIN: which skills they are missing for a target role after a resume scan
+- ASSESSMENT_HELP: they don't know what career fits them; take the skill assessment
+- MENTOR_EXPLAIN: a full career plan based on their assessment results
+- ROADMAP_HELP: a step-by-step learning plan for a goal
+- INTERVIEW_HELP: practise for interviews
+- ONBOARDING / HELP_GENERAL / FEATURE_EXPLAIN / NAVIGATION / NEXT_ACTION: getting started, what SkillSync can do, where something is, what to do next
+- GENERAL_INQUIRY: an open-ended career question that deserves a real answer, not a feature pointer
+- FALLBACK: none of the above`;
+
+/** The only pages that exist; anything else the model writes is dropped. */
+export const KNOWN_ROUTES = new Set([
+  "/dashboard", "/skill-assessment", "/career-mentor", "/radar", "/parser",
+  "/gapmap", "/roadmap", "/interview", "/resume-tools",
+]);
+
+/** The real feature names (lower case). A reply naming anything else as a feature is replaced. */
+const KNOWN_FEATURES = new Set([
+  "skillsync", "dashboard", "radar", "parser", "gapmap", "gap map", "resume tools",
+  "skill assessment", "assessment", "career mentor", "mentor", "roadmap", "interview prep", "interview",
+]);
+
+/** A correct answer for each routing intent, used when the model's reply can't be trusted. */
+export const CANONICAL_ROUTES: Record<string, { text: string; path: string }> = {
+  PARSER_HELP: { text: "Upload your resume in Parser to match it against live job listings.", path: "/parser" },
+  RESUME_TOOLS_HELP: { text: "Resume Tools can rewrite your bullets and generate a tailored cover letter.", path: "/resume-tools" },
+  RADAR_HELP: { text: "Radar shows which skills are in demand for your target role right now.", path: "/radar" },
+  GAPMAP_EXPLAIN: { text: "GapMap shows exactly which skills you're missing for your target role.", path: "/gapmap" },
+  ASSESSMENT_HELP: { text: "Take the Skill Assessment to discover your best-fit career path.", path: "/skill-assessment" },
+  MENTOR_EXPLAIN: { text: "Career Mentor builds your full roadmap from your assessment results.", path: "/career-mentor" },
+  ROADMAP_HELP: { text: "Roadmap generates a step-by-step learning plan for any goal.", path: "/roadmap" },
+  INTERVIEW_HELP: { text: "Practise with AI mock quizzes in Interview Prep.", path: "/interview" },
+};
+const DEFAULT_ROUTE = {
+  text: "SkillSync can find jobs for your resume (Parser), show in-demand skills (Radar), and build your career plan (Skill Assessment and Career Mentor).",
+  path: "/dashboard",
+};
+
+/**
+ * Keeps router replies honest: the link must point at a real page, and the
+ * reply must not name a feature SkillSync doesn't have (e.g. a made-up
+ * "Job Match feature"). Otherwise the canonical answer for the intent is used.
+ */
+export function enforceKnownRoute(rawOutput: string, intent: string): string {
+  const link = rawOutput.match(/\[Go to (\/[\w-]+)/i);
+  const validLink = !!link && KNOWN_ROUTES.has(link[1].toLowerCase());
+  const named = [...rawOutput.matchAll(/\b((?:[A-Z][\w-]*\s+){0,2}[A-Z][\w-]*)\s+(?:feature|tool|page|section|module)s?\b/g)].map((m) =>
+    m[1].toLowerCase().replace(/^the\s+/, ""),
+  );
+  const invented = named.some((n) => !KNOWN_FEATURES.has(n));
+  if (validLink && !invented) return rawOutput;
+  const fallback = CANONICAL_ROUTES[intent] ?? DEFAULT_ROUTE;
+  console.warn(JSON.stringify({ level: "warn", msg: "chatbot_reply_replaced", intent, reason: invented ? "unknown_feature" : "no_valid_link" }));
+  return `${fallback.text} [Go to ${fallback.path}]`;
+}
+
 // Intents that should go through the open-ended consultant path instead of
 // the strict 2-sentence router. Kept as a Set for fast membership checks.
 const CONSULTANT_INTENTS = new Set(["GENERAL_INQUIRY"]);
@@ -110,7 +169,9 @@ async function classifyIntent(
 
 Classify this message into EXACTLY ONE intent and return ONLY a JSON object:
 Available intents:
-${VALID_INTENTS.join(", ")}
+${INTENT_GUIDE}
+
+Examples: "find jobs according to my resume" → PARSER_HELP. "make my resume better" → RESUME_TOOLS_HELP.
 
 Use GENERAL_INQUIRY when the user is asking a real, open-ended question that isn't simply "take me to a feature" — e.g. asking for a comparison, opinion, advice on a decision, or "what should I do" framed around their own situation rather than a tool. Use one of the *_HELP / FEATURE_EXPLAIN / NAVIGATION intents whenever the message clearly maps to a specific tool action instead.
 
@@ -176,6 +237,8 @@ const ROUTER_SYSTEM_PROMPT = `You are the SkillSync Assistant. Be DIRECT and CON
 
 You are part of an ongoing conversation — the message history is provided. Use it: don't repeat a route you already gave in the last turn unless the user is confirming it, and don't ask something the user already answered earlier in the conversation.
 
+SkillSync has ONLY these features: Radar, Parser, GapMap, Resume Tools, Skill Assessment, Career Mentor, Roadmap, Interview Prep, Dashboard. Never mention any other feature, tool or page, and never rename them.
+
 FEATURE ROUTING (STRICT - follow these exactly):
 - User knows their role + wants in-demand skills → Radar: "Radar shows you exactly which skills are trending for [role] right now." [Go to /radar?role=ROLE]
 - User wants to find jobs using their resume → Parser: "Upload your resume in Parser to match against live job listings." [Go to /parser]
@@ -220,7 +283,7 @@ async function generateResponse(
 
   const completion = await openai.chat.completions.create({
     model: chatModel(),
-    temperature: 0.7,
+    temperature: 0.2,
     max_tokens: 150,
     messages: [
       { role: "system", content: ROUTER_SYSTEM_PROMPT },
@@ -314,7 +377,7 @@ function formatResponse(rawOutput: string, intent: string, confidence: number): 
   // Matches things like "[Go to /radar]" or "[Go to /radar?role=Data Scientist]"
   const actionMatch = rawOutput.match(/\[Go to (\/[\w-]+)(?:\?([\w]+)=([^\]]+))?\]/i);
   let actionLink: string | null = null;
-  if (actionMatch) {
+  if (actionMatch && KNOWN_ROUTES.has(actionMatch[1].toLowerCase())) {
     const basePath = actionMatch[1];
     const paramKey = actionMatch[2];
     const paramValue = actionMatch[3];
@@ -379,10 +442,10 @@ export async function askChatbot(payload: ChatbotPayload): Promise<ChatbotRespon
       } catch (consultantErr) {
         console.warn("[Chatbot] Consultant path failed, falling back to router:", consultantErr);
         path = "consultant->router";
-        rawOutput = await generateResponse(openai, contextString, message, payload.history);
+        rawOutput = enforceKnownRoute(await generateResponse(openai, contextString, message, payload.history), intent);
       }
     } else {
-      rawOutput = await generateResponse(openai, contextString, message, payload.history);
+      rawOutput = enforceKnownRoute(await generateResponse(openai, contextString, message, payload.history), intent);
     }
 
     console.log(JSON.stringify({ level: "info", msg: "chatbot_timing", intent, path, classifyMs, respondMs: Date.now() - t1 }));
