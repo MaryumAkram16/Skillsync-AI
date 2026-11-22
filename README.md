@@ -298,7 +298,7 @@ npx tsx evals/matching/run.ts
 
 ### Live (AI scoring step)
 
-`evals/matching/live.ts` sends each resume's labelled jobs through the AI scoring step (`analyzeWithAI`, on whichever provider `services/aiClient.ts` selects) and reports how well its `matchScore` agrees with the labels: pairs ordered correctly, mean score per label, strong fits scored 70+, and poor fits scored below 50 (the prompt's own threshold). It makes one call per resume (20 in total) and refuses to run without an AI key. The recorded result below was measured on gpt-4o-mini.
+`evals/matching/live.ts` sends each resume's labelled jobs through the AI scoring step (`analyzeWithAI`, on whichever provider `services/aiClient.ts` selects) and reports how well its `matchScore` agrees with the labels: pairs ordered correctly, mean score per label, strong fits scored 70+, and poor fits scored below 50 (the prompt's own threshold). It makes one call per resume (20 in total) and refuses to run without an AI key. It has been run on gpt-4o-mini and on Gemini 3.5 Flash-Lite, the model the app now uses.
 
 ```bash
 GEMINI_API_KEY=... npx tsx evals/matching/live.ts
@@ -309,8 +309,11 @@ In GitHub, it runs only when started manually (Actions → *Matching live evalua
 | Model | Date | Pairs ordered correctly | Mean score, strong / partial / poor | Strong 70+ | Poor < 50 |
 |---|---|---|---|---|---|
 | gpt-4o-mini | 2026-11-20 | 79.5/81 (98.1%) | 87.4 / 43.2 / 14.8 | 20/21 | 25/25 |
+| gemini-3.5-flash-lite | 2026-11-22 | 81/81 (100%) | 85.9 / 46.7 / 17.2 | 20/21 | 25/25 |
 
 First run ([workflow run](https://github.com/MaryumAkram16/Skillsync-AI/actions/runs/44757739307), ratings kept as the `matching-live-report` artifact): all 71 labelled pairs were rated, none left out. The AI step orders same-resume pairs correctly 98.1% of the time against 94.4% for the code pre-score that feeds it, and keeps the three labels far apart on average. Every poor fit scored below 50 as the prompt instructs; one strong fit fell short of 70. One run at temperature 0.2 on 71 pairs labelled by the same person who wrote the evaluation, so treat these as indicative, not a benchmark.
+
+Gemini run ([workflow run](https://github.com/MaryumAkram16/Skillsync-AI/actions/runs/45032188306)), after the app moved to Gemini 3.5 Flash-Lite with low thinking: all 20 calls succeeded with no retries or fallbacks, all 71 pairs were rated, and every same-resume pair was ordered correctly. The labels stay well apart, with partial fits scored a little higher than on gpt-4o-mini; again one strong fit fell short of 70, and every poor fit scored below 50. Each call scores 3–5 jobs at once and took 1.7–22.6 s (median about 5 s). The same limits apply: one run, 71 pairs, the same labels the scoring rules were tuned against.
 
 ---
 
