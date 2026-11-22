@@ -27,7 +27,7 @@ import { log } from "./logger";
 import { auditMiddleware } from "./auditMiddleware";
 import { validateResponse, isExplainPhaseResponse, isExplainGapResponse, isTrendExplainResponse } from "./apiSchemas";
 import { firebaseCredential } from "./services/firebaseCredential";
-import { aiClient, aiProvider, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./services/aiClient";
+import { aiClient, aiProvider, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, GEMINI_THINKING, geminiHttpOptions } from "./services/aiClient";
 
 // ── Firebase Admin SDK init (for server-side token verification) ──────────────
 if (!admin.apps || admin.apps.length === 0) {
@@ -447,12 +447,13 @@ Rules:
 
         const ai = new GoogleGenAI({
           apiKey: geminiKey,
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+          httpOptions: geminiHttpOptions,
         });
         const result = await ai.models.generateContent({
           model: geminiModel(),
           contents: prompt,
           config: {
+            thinkingConfig: GEMINI_THINKING,
             temperature: 0.4,
             maxOutputTokens: 1000,
             responseMimeType: "application/json",
@@ -546,12 +547,13 @@ Rules:
 
         const ai = new GoogleGenAI({
           apiKey: geminiKey,
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+          httpOptions: geminiHttpOptions,
         });
         const result = await ai.models.generateContent({
           model: geminiModel(),
           contents: prompt,
           config: {
+            thinkingConfig: GEMINI_THINKING,
             temperature: 0.3,
             maxOutputTokens: 1000,
           },
@@ -629,12 +631,13 @@ Rules:
 
         const ai = new GoogleGenAI({
           apiKey: geminiKey,
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+          httpOptions: geminiHttpOptions,
         });
         const result = await ai.models.generateContent({
           model: geminiModel(),
           contents: prompt,
           config: {
+            thinkingConfig: GEMINI_THINKING,
             temperature: 0.3,
             maxOutputTokens: 1000,
             responseMimeType: "application/json",
@@ -720,12 +723,13 @@ Rules:
 
         const ai = new GoogleGenAI({
           apiKey: geminiKey,
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+          httpOptions: geminiHttpOptions,
         });
         const result = await ai.models.generateContent({
           model: geminiModel(),
           contents: prompt,
           config: {
+            thinkingConfig: GEMINI_THINKING,
             temperature: 0.3,
             maxOutputTokens: 1000,
             responseMimeType: "application/json",

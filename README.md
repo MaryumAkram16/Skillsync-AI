@@ -380,7 +380,7 @@ Create a `.env` file in the project root:
 # AI providers — Gemini does all the AI work whenever GEMINI_API_KEY is set
 GEMINI_API_KEY=your_gemini_key
 CAREER_MENTOR_GEMINI_API_KEY=your_gemini_key      # optional, falls back to GEMINI_API_KEY
-GEMINI_MODEL=gemini-3.6-flash                     # optional, this is the default
+GEMINI_MODEL=gemini-3.5-flash-lite                # optional, this is the default
 OPENAI_API_KEY=your_openai_key                    # optional, used only without a Gemini key
 AI_PROVIDER=                                      # optional: "openai" to force OpenAI
 

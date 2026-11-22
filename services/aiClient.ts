@@ -13,10 +13,22 @@
  *   GEMINI_MODEL                           — optional, defaults to DEFAULT_GEMINI_MODEL
  */
 import OpenAI from "openai";
+import { ThinkingLevel } from "@google/genai";
 
 export const GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
-/** Stable Flash model with no announced shutdown (Gemini 2.0 models were shut down on 2026-06-01). */
-export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
+/**
+ * Flash-Lite: built for short, fast answers. gemini-3.6-flash with thinking on
+ * made chatbot replies take ~45 s, and in a 50-call live test on the free tier
+ * (MediLens triage, 2026-11-22) it answered only 9 times (timeouts, 503, 429),
+ * while gemini-3.5-flash-lite answered 41. GEMINI_MODEL overrides this.
+ */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
+/** Thinking adds seconds to every answer; low is enough for SkillSync's tasks. */
+export const GEMINI_THINKING = { thinkingLevel: ThinkingLevel.LOW };
+/** Give up on a Gemini call after this long, so a stuck request can't hang a page. */
+export const GEMINI_TIMEOUT_MS = 25_000;
+/** httpOptions for every GoogleGenAI client. */
+export const geminiHttpOptions = { headers: { "User-Agent": "aistudio-build" }, timeout: GEMINI_TIMEOUT_MS };
 export const OPENAI_MODEL = "gpt-4o-mini";
 /** Gemini counts thinking tokens against max_tokens, so answers get extra room. */
 export const GEMINI_THINKING_HEADROOM = 2048;
@@ -56,6 +68,52 @@ export function toGeminiRequest(body: CreateBody): CreateBody {
   };
 }
 
+/** One structured log line per AI call, so slow or failing calls show up in the Vercel logs. */
+export function logAICall(entry: {
+  provider: AIProvider;
+  model: string;
+  ms: number;
+  label?: string;
+  finish?: string | null;
+  usage?: any;
+  error?: string;
+  status?: number;
+}): void {
+  const { usage, ...rest } = entry;
+  const line = {
+    level: entry.error ? "warn" : "info",
+    msg: entry.error ? "ai_call_failed" : "ai_call",
+    ...rest,
+    ...(usage
+      ? {
+          promptTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+          thinkingTokens: usage.completion_tokens_details?.reasoning_tokens,
+        }
+      : {}),
+  };
+  (entry.error ? console.warn : console.log)(JSON.stringify(line));
+}
+
+/** Wraps chat.completions.create so every call is timed and logged. */
+function instrument(client: OpenAI, provider: AIProvider, adapt: (body: CreateBody) => CreateBody): OpenAI {
+  const completions = client.chat.completions;
+  const create = completions.create.bind(completions);
+  completions.create = (async (body: CreateBody, options?: any) => {
+    const sent = adapt(body);
+    const start = Date.now();
+    try {
+      const res: any = await create(sent as any, options);
+      logAICall({ provider, model: sent.model, ms: Date.now() - start, finish: res?.choices?.[0]?.finish_reason, usage: res?.usage });
+      return res;
+    } catch (err: any) {
+      logAICall({ provider, model: sent.model, ms: Date.now() - start, status: err?.status, error: String(err?.message ?? err).slice(0, 300) });
+      throw err;
+    }
+  }) as any;
+  return client;
+}
+
 /**
  * An OpenAI SDK client for the active provider. Call sites use it exactly like
  * `new OpenAI({ apiKey })`. `fetch` is injectable for tests.
@@ -63,11 +121,9 @@ export function toGeminiRequest(body: CreateBody): CreateBody {
 export function aiClient(opts: { fetch?: typeof fetch } = {}): OpenAI {
   const provider = aiProvider();
   if (!provider) throw new Error(AI_KEY_MISSING);
-  if (provider === "openai") return new OpenAI({ apiKey: openaiApiKey(), fetch: opts.fetch });
-
-  const client = new OpenAI({ apiKey: geminiApiKey(), baseURL: GEMINI_OPENAI_BASE_URL, fetch: opts.fetch });
-  const completions = client.chat.completions;
-  const create = completions.create.bind(completions);
-  completions.create = ((body: CreateBody, options?: any) => create(toGeminiRequest(body) as any, options)) as any;
-  return client;
+  if (provider === "openai") {
+    return instrument(new OpenAI({ apiKey: openaiApiKey(), fetch: opts.fetch }), "openai", (b) => b);
+  }
+  const client = new OpenAI({ apiKey: geminiApiKey(), baseURL: GEMINI_OPENAI_BASE_URL, fetch: opts.fetch, timeout: GEMINI_TIMEOUT_MS, maxRetries: 1 });
+  return instrument(client, "gemini", toGeminiRequest);
 }

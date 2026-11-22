@@ -23,11 +23,7 @@ if (process.env.RADAR_GEMINI_API_KEY) console.log("[Radar] Using RADAR_GEMINI_AP
 else if (process.env.GEMINI_API_KEY) console.log("[Radar] Using default GEMINI_API_KEY");
 const ai = new GoogleGenAI({
   apiKey: radarGeminiKey,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
+  httpOptions: geminiHttpOptions
 });
 
 // ─── Persistent cache (Firestore, 24h TTL — falls back to in-memory if
@@ -346,7 +342,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
           maxOutputTokens: 3000,
           responseMimeType: "application/json",
           // Enable thinking for market trend analysis
-          thinkingConfig: { thinkingBudget: 1500 },
+          thinkingConfig: GEMINI_THINKING,
         },
       }),
     // maxRetries: 1 (was default 2) — this is a user-facing, time-sensitive
@@ -382,7 +378,7 @@ async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<str
 // ─── Fallback: Fetch salary data from SerpAPI (for countries like Pakistan) with fallback key ─
 
 import { searchSerp } from "./serpClient";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, GEMINI_THINKING, geminiHttpOptions } from "./aiClient";
 
 async function fetchSalaryFromSerpAPI(role: string, country: string): Promise<{ min: number | null; max: number | null; currency: string; note: string } | null> {
     try {
