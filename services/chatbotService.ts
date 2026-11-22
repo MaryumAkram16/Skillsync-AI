@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, logAICall } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, logAICall, GEMINI_THINKING, geminiHttpOptions } from "./aiClient";
 
 /**
  * SkillSync Chatbot Service
@@ -30,7 +30,7 @@ else console.warn("[Chatbot] No Gemini key set (CHATBOT_GEMINI_API_KEY / GEMINI_
 const gemini = chatbotGeminiKey
   ? new GoogleGenAI({
       apiKey: chatbotGeminiKey,
-      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+      httpOptions: geminiHttpOptions,
     })
   : null;
 
@@ -284,7 +284,7 @@ User: ${message}`;
           config: {
             temperature: 0.6,
             maxOutputTokens: 1000,
-            thinkingConfig: { thinkingBudget: 1000 },
+            thinkingConfig: GEMINI_THINKING,
           },
         }),
       { label: "[Chatbot/Consultant]", maxRetries: 1 }

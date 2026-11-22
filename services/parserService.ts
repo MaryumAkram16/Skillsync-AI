@@ -18,7 +18,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry, runWithConcurrency } from "./geminiRetry";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, openaiApiKey, GEMINI_THINKING, geminiHttpOptions } from "./aiClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -460,11 +460,7 @@ async function extractJobRequirementsWithGemini(
   try {
     const ai = new GoogleGenAI({
       apiKey: geminiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
+      httpOptions: geminiHttpOptions
     });
 
     const prompt = `Extract job requirements from this description. Return ONLY raw JSON, no markdown.
@@ -488,7 +484,7 @@ ${description.slice(0, 1500)}`;
             maxOutputTokens: 1500,
             responseMimeType: "application/json",
             // Enable thinking for complex resume parsing
-            thinkingConfig: { thinkingBudget: 1000 },
+            thinkingConfig: GEMINI_THINKING,
           },
         }),
       { label: "[Parser]" }

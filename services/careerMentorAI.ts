@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { withGeminiRetry } from "./geminiRetry";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, GEMINI_THINKING, geminiHttpOptions } from "./aiClient";
 
 /**
  * Shared AI caller used by all three career-mentor features (quiz
@@ -40,7 +40,7 @@ async function callGemini(
 
   const ai = new GoogleGenAI({
     apiKey: geminiKey,
-    httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+    httpOptions: geminiHttpOptions,
   });
   const result = await withGeminiRetry(
     () =>
@@ -52,7 +52,7 @@ async function callGemini(
           maxOutputTokens: maxTokens,
           responseMimeType: jsonMode ? "application/json" : undefined,
           // Enable thinking for nuanced career guidance
-          thinkingConfig: { thinkingBudget: 2000 },
+          thinkingConfig: GEMINI_THINKING,
         },
       }),
     { label: "[CareerMentor]" }

@@ -3,7 +3,7 @@ import { withGeminiRetry } from "./geminiRetry";
 import { getPersistentCache, setPersistentCache } from "./persistentCache";
 import { singleFlight } from "./singleFlight";
 import { searchSerp, SerpResult } from "./serpClient";
-import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING } from "./aiClient";
+import { aiClient, chatModel, geminiModel, aiKeyAvailable, AI_KEY_MISSING, GEMINI_THINKING, geminiHttpOptions } from "./aiClient";
 
 // useCasesService.ts
 // Local service for finding real-world use cases and success stories.
@@ -199,11 +199,7 @@ async function callGPT4o(system: string, user: string): Promise<string> {
     try {
       const ai = new GoogleGenAI({
         apiKey: geminiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
+        httpOptions: geminiHttpOptions
       });
       const result = await withGeminiRetry(
         () =>
@@ -215,7 +211,7 @@ async function callGPT4o(system: string, user: string): Promise<string> {
               maxOutputTokens: 8000,
               responseMimeType: "application/json",
               // Enable thinking for extracting career stories
-              thinkingConfig: { thinkingBudget: 2000 },
+              thinkingConfig: GEMINI_THINKING,
             },
           }),
         { label: "[UseCases]" }
